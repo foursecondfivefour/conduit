@@ -13,8 +13,11 @@ Designed for a small footprint: one WebView window, mobile YouTube UI, system-tr
 ## Build
 
 ```powershell
+go generate ./...   # embeds assets/windows/icon.ico into the .exe (needs go-winres)
 go build -ldflags="-s -w" -tags production -o build\conduit.exe .
 ```
+
+`rsrc_windows_amd64.syso` is checked in so a plain `go build` also works on Windows amd64.
 
 ## Run
 

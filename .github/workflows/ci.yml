@@ -17,6 +17,12 @@ jobs:
           go-version: "1.22"
           cache: true
 
+      - name: Install go-winres
+        run: go install github.com/tc-hib/go-winres@latest
+
+      - name: Embed Windows icon
+        run: go generate ./...
+
       - name: Test
         run: go test ./...
 

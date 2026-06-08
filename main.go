@@ -1,3 +1,5 @@
+//go:generate go-winres simply --icon assets/windows/icon.ico --manifest gui --product-name Conduit --file-description Conduit --copyright Copyright (c) foursecondfivefour --out rsrc
+
 package main
 
 import (

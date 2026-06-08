@@ -22,7 +22,7 @@ func Run(ctx context.Context, proxyServer *proxy.Server, settings *config.Settin
 	app := application.New(application.Options{
 		Name:        "Conduit",
 		Description: "Local CONNECT proxy with TLS fragmentation and YouTube viewer",
-		Icon:        trayIcon,
+		Icon:        appIcon,
 		Windows: application.WindowsOptions{
 			AdditionalBrowserArgs: chromiumArgs(proxyURL),
 		},
