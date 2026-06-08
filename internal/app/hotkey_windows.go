@@ -4,7 +4,6 @@ package app
 
 import (
 	"syscall"
-	"unsafe"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
 )
@@ -56,5 +55,3 @@ func (h *HotkeyToggle) HandleMessage(msg uint32) bool {
 	return false
 }
 
-// suppress unused
-var _ = unsafe.Pointer(nil)

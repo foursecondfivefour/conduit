@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Six DPI strategies including none, TCP 1/2/8-byte segmentation, and TLS record fragmentation variants.
 - Connection health check through the local proxy.
 - Rotating file logs under `%AppData%\Conduit\logs` or `./Conduit/logs` in portable mode.
-- Windows autostart, system proxy with snapshot restore, minimize-to-tray on close, Ctrl+Shift+Y hotkey stub.
+- Windows autostart, system proxy with snapshot restore, minimize-to-tray on close, Ctrl+Shift+Y hotkey toggle.
 - GitHub auto-update: check, download, SHA256 verify, `conduit-updater.exe` replace + relaunch.
 - Inno Setup installer (`Conduit-Setup-1.2.0.exe`).
 - Integration tests for CONNECT allowlist behavior.

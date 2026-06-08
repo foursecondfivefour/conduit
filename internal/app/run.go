@@ -71,6 +71,7 @@ func Run(in RunInput) error {
 	setupWindowCloseToTray(youtube, func() bool {
 		return in.Prefs.Get().MinimizeToTray
 	})
+	setupHotkeyToggle(youtube)
 
 	control := NewControlService(in.Proxy, in.Resolver, in.Settings, in.Prefs)
 	flow := newStartupFlow(app, youtube, in.Prefs)

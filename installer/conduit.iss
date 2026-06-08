@@ -17,6 +17,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={localappdata}\Programs\Conduit
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+OutputDir=..\build
 OutputBaseFilename=Conduit-Setup-{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
