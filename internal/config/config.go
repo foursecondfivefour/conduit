@@ -18,6 +18,8 @@ const (
 
 	WindowWidth  = 960
 	WindowHeight = 540
+
+	SplashDuration = 2 * time.Second
 )
 
 // Settings holds runtime configuration shared across components.

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Обучение — Conduit</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f141d;
+      color: #e8edf7;
+      user-select: none;
+    }
+    .shell {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 22px 24px 18px;
+      background: linear-gradient(160deg, #121a2b 0%, #0d1117 45%, #0a0e14 100%);
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .top img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+    }
+    .top h1 {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .top p {
+      font-size: 0.78rem;
+      color: #8fa3c4;
+    }
+    .progress {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .dot {
+      flex: 1;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      transition: background 0.25s ease;
+    }
+    .dot.active {
+      background: linear-gradient(90deg, #2dd4ff, #8b5cf6);
+    }
+    .card {
+      flex: 1;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 20px 18px;
+      background: rgba(255, 255, 255, 0.03);
+      overflow: auto;
+    }
+    .step { display: none; animation: fade 0.25s ease; }
+    .step.active { display: block; }
+    .step h2 {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .step p, .step li {
+      font-size: 0.92rem;
+      line-height: 1.55;
+      color: #b8c5dc;
+    }
+    .step ul {
+      margin: 10px 0 0 18px;
+    }
+    .step li { margin-bottom: 6px; }
+    .hint {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(45, 212, 255, 0.08);
+      border: 1px solid rgba(45, 212, 255, 0.18);
+      font-size: 0.85rem;
+      color: #c9e9ff;
+    }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+    button:active { transform: scale(0.98); }
+    .ghost {
+      background: transparent;
+      color: #8fa3c4;
+    }
+    .ghost:hover { color: #c5d4ef; }
+    .primary {
+      background: linear-gradient(135deg, #2dd4ff, #8b5cf6);
+      color: #081018;
+      min-width: 120px;
+    }
+    .primary:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <img src="data:image/png;base64,{{ICON}}" alt="">
+      <div>
+        <h1>Добро пожаловать</h1>
+        <p>Краткое знакомство с Conduit</p>
+      </div>
+    </div>
+    <div class="progress" id="progress"></div>
+    <div class="card">
+      <section class="step active" data-step="0">
+        <h2>Что делает Conduit</h2>
+        <p>Conduit запускает локальный HTTP-прокси на вашем компьютере и открывает YouTube в отдельном окне. Трафик к YouTube и Google CDN идёт через этот прокси с фрагментацией TLS ClientHello.</p>
+        <p class="hint">Администраторские права не требуются.</p>
+      </section>
+      <section class="step" data-step="1">
+        <h2>Локальный прокси</h2>
+        <p>По умолчанию прокси слушает <strong>127.0.0.1:31284</strong> (или следующий свободный порт). Доступ только с вашего ПК.</p>
+        <ul>
+          <li>Разрешены только домены YouTube и Google Media</li>
+          <li>DNS через DoH (Cloudflare и Google)</li>
+        </ul>
+      </section>
+      <section class="step" data-step="2">
+        <h2>Стратегии DPI</h2>
+        <p>В меню трея можно переключать способ обхода:</p>
+        <ul>
+          <li><strong>TCP segmentation</strong> — разбиение первого ClientHello на сегменты</li>
+          <li><strong>TLS record fragmentation</strong> — фрагментация TLS-записи</li>
+        </ul>
+        <p class="hint">Если одна стратегия не работает, попробуйте другую и сбросьте DNS-кэш.</p>
+      </section>
+      <section class="step" data-step="3">
+        <h2>Меню в трее</h2>
+        <p>Иконка Conduit в области уведомлений открывает меню:</p>
+        <ul>
+          <li>Статус прокси и порт</li>
+          <li>Выбор стратегии DPI</li>
+          <li>Сброс DNS-кэша</li>
+          <li>Повторное обучение и выход</li>
+        </ul>
+      </section>
+      <section class="step" data-step="4">
+        <h2>Ответственность</h2>
+        <p>Обход сетевых ограничений может регулироваться законодательством вашей страны. Вы несёте ответственность за соблюдение местных правил.</p>
+        <p class="hint">Проект распространяется «как есть», без гарантий.</p>
+      </section>
+      <section class="step" data-step="5">
+        <h2>Готово!</h2>
+        <p>Сейчас откроется мобильная версия YouTube. Настройки всегда доступны через иконку в трее.</p>
+        <p class="hint">Приятного просмотра.</p>
+      </section>
+    </div>
+    <div class="actions">
+      <button type="button" class="ghost" id="skip">Пропустить</button>
+      <div>
+        <button type="button" class="ghost" id="back" disabled>Назад</button>
+        <button type="button" class="primary" id="next">Далее</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var steps = document.querySelectorAll(".step");
+      var total = steps.length;
+      var index = 0;
+      var progress = document.getElementById("progress");
+      var backBtn = document.getElementById("back");
+      var nextBtn = document.getElementById("next");
+      var skipBtn = document.getElementById("skip");
+
+      for (var i = 0; i < total; i++) {
+        var dot = document.createElement("div");
+        dot.className = "dot" + (i === 0 ? " active" : "");
+        progress.appendChild(dot);
+      }
+
+      function emit(name) {
+        if (window.wails && window.wails.Events) {
+          window.wails.Events.Emit(name);
+        }
+      }
+
+      function render() {
+        for (var i = 0; i < steps.length; i++) {
+          steps[i].classList.toggle("active", i === index);
+        }
+        var dots = progress.children;
+        for (var j = 0; j < dots.length; j++) {
+          dots[j].classList.toggle("active", j <= index);
+        }
+        backBtn.disabled = index === 0;
+        nextBtn.textContent = index === total - 1 ? "Начать" : "Далее";
+      }
+
+      backBtn.addEventListener("click", function () {
+        if (index > 0) { index--; render(); }
+      });
+      nextBtn.addEventListener("click", function () {
+        if (index < total - 1) {
+          index++;
+          render();
+        } else {
+          emit("onboarding:finish");
+        }
+      });
+      skipBtn.addEventListener("click", function () {
+        emit("onboarding:skip");
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>

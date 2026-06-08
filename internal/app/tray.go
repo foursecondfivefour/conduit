@@ -15,16 +15,18 @@ type trayUI struct {
 	app      *application.App
 	proxy    *proxy.Server
 	control  *ControlService
+	flow     *startupFlow
 	statusItem *application.MenuItem
 	tcpItem    *application.MenuItem
 	tlsItem    *application.MenuItem
 }
 
-func setupTray(app *application.App, proxyServer *proxy.Server, settings *config.Settings) {
+func setupTray(app *application.App, proxyServer *proxy.Server, settings *config.Settings, flow *startupFlow) {
 	ui := &trayUI{
 		app:     app,
 		proxy:   proxyServer,
 		control: NewControlService(proxyServer, settings),
+		flow:    flow,
 	}
 
 	ui.statusItem = application.NewMenuItem(ui.statusLabel())
@@ -44,6 +46,11 @@ func setupTray(app *application.App, proxyServer *proxy.Server, settings *config
 		_, _ = ui.proxy.Restart(context.Background())
 		ui.statusItem.SetLabel(ui.statusLabel())
 	})
+	helpItem := application.NewMenuItem("Обучение").OnClick(func(*application.Context) {
+		if ui.flow != nil {
+			ui.flow.showOnboardingFromTray()
+		}
+	})
 	quitItem := application.NewMenuItem("Выход").OnClick(func(*application.Context) {
 		app.Quit()
 	})
@@ -53,6 +60,7 @@ func setupTray(app *application.App, proxyServer *proxy.Server, settings *config
 		application.NewMenuItemSeparator(),
 		application.NewSubmenu("Стратегия DPI", strategyMenu),
 		dnsItem,
+		helpItem,
 		application.NewMenuItemSeparator(),
 		quitItem,
 	)

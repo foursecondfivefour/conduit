@@ -19,6 +19,11 @@ func Run(ctx context.Context, proxyServer *proxy.Server, settings *config.Settin
 
 	proxyURL := fmt.Sprintf("http://%s:%d", config.ListenHost, port)
 
+	prefs, err := newPreferenceStore()
+	if err != nil {
+		return fmt.Errorf("preferences: %w", err)
+	}
+
 	app := application.New(application.Options{
 		Name:        "Conduit",
 		Description: "Local CONNECT proxy with TLS fragmentation and YouTube viewer",
@@ -28,24 +33,24 @@ func Run(ctx context.Context, proxyServer *proxy.Server, settings *config.Settin
 		},
 	})
 
-	setupTray(app, proxyServer, settings)
-
 	youtube := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:                     "conduit",
-		Title:                    "YouTube",
-		Width:                    config.WindowWidth,
-		Height:                   config.WindowHeight,
-		MinWidth:                 480,
-		MinHeight:                360,
-		BackgroundColour:         application.NewRGB(18, 18, 18),
-		URL:                      config.YouTubeURL,
-		DevToolsEnabled:          false,
+		Name:                       "conduit",
+		Title:                      "YouTube",
+		Width:                      config.WindowWidth,
+		Height:                     config.WindowHeight,
+		MinWidth:                   480,
+		MinHeight:                  360,
+		Hidden:                     true,
+		BackgroundColour:           application.NewRGB(18, 18, 18),
+		URL:                        config.YouTubeURL,
+		DevToolsEnabled:            false,
 		DefaultContextMenuDisabled: true,
-		OpenInspectorOnStartup:   false,
+		OpenInspectorOnStartup:     false,
 	})
 
-	youtube.Center()
-	youtube.Show()
+	flow := newStartupFlow(app, youtube, prefs)
+	setupTray(app, proxyServer, settings, flow)
+	flow.begin()
 
 	return app.Run()
 }

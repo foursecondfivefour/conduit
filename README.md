@@ -41,9 +41,11 @@ go build -ldflags="-s -w -H=windowsgui" -tags production -o build\conduit.exe .
 .\build\conduit.exe
 ```
 
-1. Proxy listens on `127.0.0.1:31284` (or the next free port).
-2. A YouTube window opens (`https://m.youtube.com`).
-3. Tray icon: DPI strategy, DNS cache reset, quit.
+1. A short splash screen appears while Conduit starts.
+2. On first launch, a guided onboarding tour explains proxy, DPI strategies, and the tray menu.
+3. Proxy listens on `127.0.0.1:31284` (or the next free port).
+4. A YouTube window opens (`https://m.youtube.com`).
+5. Tray icon: DPI strategy, DNS cache reset, **Обучение**, quit.
 
 ### Proxy only (lowest RAM)
 
