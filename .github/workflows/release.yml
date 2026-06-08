@@ -1,13 +1,15 @@
-name: CI
+name: Release
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
 
 jobs:
-  test:
+  release:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,11 +25,10 @@ jobs:
       - name: Embed Windows icon
         run: go generate ./...
 
-      - name: Test
-        run: go test ./...
-
-      - name: Vet
-        run: go vet ./...
-
       - name: Build
-        run: go build -ldflags="-s -w -H=windowsgui" -tags production -o build/conduit.exe .
+        run: go build -ldflags="-s -w -H=windowsgui" -tags production -o conduit.exe .
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: conduit.exe
+          generate_release_notes: true
