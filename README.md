@@ -14,11 +14,26 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"></a>
 </p>
 
-Designed for a small footprint: one WebView window, mobile YouTube UI, system-tray settings. Release builds run without a console window.
+Designed for a small footprint: one WebView window, mobile YouTube UI, full system-tray control. Release builds run without a console window.
 
 ## Download
 
-Pre-built Windows binary (amd64): **[Latest release](https://github.com/foursecondfivefour/conduit/releases/latest)** — download `conduit.exe`, then run it. Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
+- **Portable:** `conduit.exe` + `conduit-updater.exe` from [Latest release](https://github.com/foursecondfivefour/conduit/releases/latest)
+- **Installer:** `Conduit-Setup-1.2.0.exe` (installs to `%LocalAppData%\Programs\Conduit\`)
+
+Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
+
+> Unsigned builds may show a SmartScreen prompt on first run. See [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).
+
+## Features (v1.2.0)
+
+- Persistent settings (DPI, DoH, allowlist, language, autostart, system proxy, minimize-to-tray, auto-update)
+- DoH providers: Cloudflare, Google, Quad9
+- Allowlist presets: YouTube only, Google media, custom domains (via `preferences.json`)
+- DPI strategies: none, TCP segmentation (1/2/8 bytes), TLS record fragmentation (5/2 bytes)
+- Connection test, file logging, GitHub auto-update
+- Windows: autostart, system proxy with restore on exit, **Ctrl+Shift+Y** to show/hide YouTube
+- Russian and English UI
 
 ## Requirements
 
@@ -29,11 +44,10 @@ Pre-built Windows binary (amd64): **[Latest release](https://github.com/fourseco
 ## Build
 
 ```powershell
-go generate ./...   # embeds assets/windows/icon.ico into the .exe (needs go-winres)
-go build -ldflags="-s -w -H=windowsgui" -tags production -o build\conduit.exe .
+go generate ./...
+go build -ldflags="-s -w -H=windowsgui -X github.com/foursecondfivefour/conduit/internal/config.Version=1.2.0" -tags production -o build\conduit.exe .
+go build -ldflags="-s -w -H=windowsgui" -o build\conduit-updater.exe .\cmd\conduit-updater
 ```
-
-`-H=windowsgui` hides the console window in release builds. `rsrc_windows_amd64.syso` is checked in so a plain `go build` also works on Windows amd64 (add the same ldflags for a GUI subsystem).
 
 ## Run
 
@@ -41,19 +55,33 @@ go build -ldflags="-s -w -H=windowsgui" -tags production -o build\conduit.exe .
 .\build\conduit.exe
 ```
 
-1. A short splash screen appears while Conduit starts.
-2. On first launch, a guided onboarding tour explains proxy, DPI strategies, and the tray menu.
-3. Proxy listens on `127.0.0.1:31284` (or the next free port).
-4. A YouTube window opens (`https://m.youtube.com`).
-5. Tray icon: DPI strategy, DNS cache reset, **Обучение**, quit.
+1. Splash screen while Conduit starts
+2. First-launch onboarding (RU/EN)
+3. Proxy on `127.0.0.1:31284` (or next free port)
+4. YouTube window (`https://m.youtube.com`)
+5. Tray: DPI, DNS, domains, options, updates, connection test, language, logs
+
+### Portable mode
+
+```powershell
+.\build\conduit.exe -portable
+```
+
+Config and logs: `./Conduit/preferences.json`, `./Conduit/logs/conduit.log`
 
 ### Proxy only (lowest RAM)
 
 ```powershell
 .\build\conduit.exe -no-gui
+.\build\conduit.exe -no-gui -system-proxy -portable
 ```
 
-Point your browser at `http://127.0.0.1:31284`.
+### Logs
+
+- Default: `%AppData%\Conduit\logs\conduit.log`
+- Portable: `./Conduit/logs/conduit.log`
+
+Open from tray: **Open log** / **Открыть лог**
 
 ## Verify proxy
 
@@ -69,13 +97,20 @@ WebView2 → CONNECT proxy → DoH DNS → TCP:443
       TLS ClientHello fragmentation (first write only)
 ```
 
-The proxy binds to `127.0.0.1` and allows only YouTube/Google media domains.
-
 ## Tests
 
 ```powershell
 go test ./...
 ```
+
+## Troubleshooting
+
+| Issue | Suggestion |
+|-------|------------|
+| SmartScreen warning | Expected for unsigned builds; see CODE_SIGNING.md |
+| YouTube won't load | Try another DPI strategy; run connection test; flush DNS cache |
+| Other apps lose network | Disable system proxy in tray before quitting |
+| Auto-update fails | Download manually from GitHub; check antivirus lock on `conduit.exe` |
 
 ## Disclaimer
 

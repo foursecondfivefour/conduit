@@ -22,7 +22,7 @@ type Server struct {
 	settings func() config.Settings
 	dialFunc func(context.Context, string, string) (net.Conn, error)
 
-	mu sync.RWMutex
+	mu       sync.RWMutex
 	httpSrv  *http.Server
 	listener net.Listener
 	running  atomic.Bool
@@ -120,7 +120,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	if h, _, err := net.SplitHostPort(r.Host); err == nil {
 		host = h
 	}
-	if !AllowedHost(host) {
+	settings := s.settings()
+	if !AllowedHostForSettings(host, settings) {
 		http.Error(w, "host not allowed", http.StatusForbidden)
 		return
 	}
@@ -151,7 +152,6 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 
 	_, _ = io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
 
-	settings := s.settings()
 	writer := dpi.NewFragmentWriter(settings.Strategy)
 	_ = dpi.Relay(client, upstream, writer)
 }

@@ -4,35 +4,86 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"path/filepath"
 	"sync"
+	"time"
+
+	"github.com/foursecondfivefour/conduit/internal/config"
+	"github.com/foursecondfivefour/conduit/internal/dns"
+	"github.com/foursecondfivefour/conduit/internal/dpi"
+	"github.com/foursecondfivefour/conduit/internal/proxy"
 )
 
-// Preferences stores per-user UI state on disk.
+const saveDebounce = 200 * time.Millisecond
+
+// Preferences stores per-user settings on disk.
 type Preferences struct {
-	OnboardingCompleted bool `json:"onboardingCompleted"`
+	OnboardingCompleted bool     `json:"onboardingCompleted"`
+	Strategy            string   `json:"strategy"`
+	DoHProvider         string   `json:"dohProvider"`
+	AllowlistPreset     string   `json:"allowlistPreset"`
+	CustomDomains       []string `json:"customDomains"`
+	Language            string   `json:"language"`
+	WindowWidth         int      `json:"windowWidth"`
+	WindowHeight        int      `json:"windowHeight"`
+	Autostart           bool     `json:"autostart"`
+	SystemProxy         bool     `json:"systemProxy"`
+	MinimizeToTray      bool     `json:"minimizeToTray"`
+	Portable            bool     `json:"portable"`
+	AutoUpdate          bool     `json:"autoUpdate"`
+	UpdateCheckInterval string   `json:"updateCheckInterval"`
+	LastUpdateCheck     time.Time `json:"lastUpdateCheck"`
+	SkippedVersion      string   `json:"skippedVersion"`
+	LastHealthOK        bool     `json:"lastHealthOK"`
+	LastHealthCheck     time.Time `json:"lastHealthCheck"`
+}
+
+func DefaultPreferences(portable bool) Preferences {
+	return Preferences{
+		Strategy:            string(dpi.StrategyTCPSegmentation),
+		DoHProvider:         string(dns.ProviderCloudflare),
+		AllowlistPreset:     proxy.PresetGoogleMedia.String(),
+		Language:            "ru",
+		WindowWidth:         config.WindowWidth,
+		WindowHeight:        config.WindowHeight,
+		AutoUpdate:          true,
+		UpdateCheckInterval: config.DefaultUpdateCheckInterval.String(),
+		Portable:            portable,
+	}
 }
 
 type preferenceStore struct {
-	path string
-	mu   sync.Mutex
-	data Preferences
+	path      string
+	configDir string
+	mu        sync.Mutex
+	data      Preferences
+	saveCh    chan struct{}
+	stopCh    chan struct{}
+	doneCh    chan struct{}
 }
 
-func newPreferenceStore() (*preferenceStore, error) {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return nil, err
-	}
-	appDir := filepath.Join(dir, "Conduit")
-	if err := os.MkdirAll(appDir, 0o700); err != nil {
+// NewPreferenceStore loads or creates user preferences on disk.
+func NewPreferenceStore(paths RuntimePaths) (*preferenceStore, error) {
+	return newPreferenceStore(paths)
+}
+
+func newPreferenceStore(paths RuntimePaths) (*preferenceStore, error) {
+	if err := os.MkdirAll(paths.ConfigDir, 0o700); err != nil {
 		return nil, err
 	}
 
-	store := &preferenceStore{path: filepath.Join(appDir, "preferences.json")}
+	store := &preferenceStore{
+		path:      paths.PreferencesPath(),
+		configDir: paths.ConfigDir,
+		data:      DefaultPreferences(paths.Portable),
+		saveCh:    make(chan struct{}, 1),
+		stopCh:    make(chan struct{}),
+		doneCh:    make(chan struct{}),
+	}
 	if err := store.load(); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
+	store.data.Portable = paths.Portable
+	go store.saveLoop()
 	return store, nil
 }
 
@@ -46,14 +97,89 @@ func (s *preferenceStore) load() error {
 	return json.Unmarshal(raw, &s.data)
 }
 
-func (s *preferenceStore) save() error {
+func (s *preferenceStore) saveLoop() {
+	var timer *time.Timer
+	var timerC <-chan time.Time
+	for {
+		select {
+		case <-s.stopCh:
+			if timer != nil {
+				timer.Stop()
+			}
+			_ = s.saveNow()
+			close(s.doneCh)
+			return
+		case <-s.saveCh:
+			if timer == nil {
+				timer = time.NewTimer(saveDebounce)
+				timerC = timer.C
+			} else {
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
+				timer.Reset(saveDebounce)
+			}
+		case <-timerC:
+			timerC = nil
+			_ = s.saveNow()
+		}
+	}
+}
+
+func (s *preferenceStore) scheduleSave() {
+	select {
+	case s.saveCh <- struct{}{}:
+	default:
+	}
+}
+
+func (s *preferenceStore) saveNow() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	raw, err := json.MarshalIndent(s.data, "", "  ")
+	s.mu.Unlock()
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(s.path, raw, 0o600)
+}
+
+func (s *preferenceStore) Close() error {
+	select {
+	case <-s.doneCh:
+		return nil
+	default:
+	}
+	close(s.stopCh)
+	<-s.doneCh
+	return nil
+}
+
+func (s *preferenceStore) Get() Preferences {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cp := s.data
+	if len(cp.CustomDomains) > 0 {
+		cp.CustomDomains = append([]string(nil), cp.CustomDomains...)
+	}
+	return cp
+}
+
+func (s *preferenceStore) Update(fn func(*Preferences)) {
+	s.mu.Lock()
+	fn(&s.data)
+	s.mu.Unlock()
+	s.scheduleSave()
+}
+
+func (s *preferenceStore) ConfigDir() string {
+	return s.configDir
+}
+
+func (s *preferenceStore) PreferencesPath() string {
+	return s.path
 }
 
 func (s *preferenceStore) NeedsOnboarding() bool {
@@ -63,8 +189,20 @@ func (s *preferenceStore) NeedsOnboarding() bool {
 }
 
 func (s *preferenceStore) CompleteOnboarding() error {
-	s.mu.Lock()
-	s.data.OnboardingCompleted = true
-	s.mu.Unlock()
-	return s.save()
+	s.Update(func(p *Preferences) {
+		p.OnboardingCompleted = true
+	})
+	return s.saveNow()
+}
+
+func (s *preferenceStore) UpdateCheckInterval() time.Duration {
+	p := s.Get()
+	if p.UpdateCheckInterval == "" {
+		return config.DefaultUpdateCheckInterval
+	}
+	d, err := time.ParseDuration(p.UpdateCheckInterval)
+	if err != nil || d < time.Hour {
+		return config.DefaultUpdateCheckInterval
+	}
+	return d
 }

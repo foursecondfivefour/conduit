@@ -12,14 +12,7 @@ import (
 	"time"
 )
 
-const (
-	defaultTTL = 300 * time.Second
-)
-
-var dohEndpoints = []string{
-	"https://cloudflare-dns.com/dns-query",
-	"https://dns.google/resolve",
-}
+const defaultTTL = 300 * time.Second
 
 type cacheEntry struct {
 	ips       []net.IP
@@ -28,16 +21,37 @@ type cacheEntry struct {
 
 // Resolver resolves hostnames via DNS-over-HTTPS with in-memory caching.
 type Resolver struct {
-	client *http.Client
-	mu     sync.RWMutex
-	cache  map[string]cacheEntry
+	client   *http.Client
+	mu       sync.RWMutex
+	cache    map[string]cacheEntry
+	provider Provider
 }
 
-func NewResolver() *Resolver {
-	return &Resolver{
-		client: &http.Client{Timeout: 8 * time.Second},
-		cache:  make(map[string]cacheEntry),
+func NewResolver(provider Provider) *Resolver {
+	if !provider.Valid() {
+		provider = ProviderCloudflare
 	}
+	return &Resolver{
+		client:   &http.Client{Timeout: 8 * time.Second},
+		cache:    make(map[string]cacheEntry),
+		provider: provider,
+	}
+}
+
+func (r *Resolver) Provider() Provider {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.provider
+}
+
+func (r *Resolver) SetProvider(provider Provider) {
+	if !provider.Valid() {
+		return
+	}
+	r.mu.Lock()
+	r.provider = provider
+	r.cache = make(map[string]cacheEntry)
+	r.mu.Unlock()
 }
 
 func (r *Resolver) LookupIP(ctx context.Context, host string) ([]net.IP, error) {
@@ -49,9 +63,10 @@ func (r *Resolver) LookupIP(ctx context.Context, host string) ([]net.IP, error) 
 		r.mu.RUnlock()
 		return ips, nil
 	}
+	provider := r.provider
 	r.mu.RUnlock()
 
-	ips, ttl, err := r.queryDoH(ctx, host)
+	ips, ttl, err := r.queryDoH(ctx, host, provider)
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +116,11 @@ func (r *Resolver) DialContext(ctx context.Context, network, address string) (ne
 	return nil, fmt.Errorf("dns: dial failed for %s", address)
 }
 
-func (r *Resolver) queryDoH(ctx context.Context, host string) ([]net.IP, time.Duration, error) {
+func (r *Resolver) queryDoH(ctx context.Context, host string, provider Provider) ([]net.IP, time.Duration, error) {
+	endpoints := []Provider{provider, provider.Fallback()}
 	var lastErr error
-	for _, endpoint := range dohEndpoints {
-		ips, ttl, err := r.queryEndpoint(ctx, endpoint, host)
+	for _, p := range endpoints {
+		ips, ttl, err := r.queryEndpoint(ctx, p.Endpoint(), host)
 		if err == nil {
 			return ips, ttl, nil
 		}

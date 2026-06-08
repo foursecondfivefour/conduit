@@ -1,8 +1,13 @@
 package proxy
 
-import "testing"
+import (
+	"testing"
 
-func TestAllowedHost(t *testing.T) {
+	"github.com/foursecondfivefour/conduit/internal/config"
+)
+
+func TestAllowedHostGoogleMedia(t *testing.T) {
+	settings := config.DefaultSettings()
 	tests := []struct {
 		host string
 		want bool
@@ -19,8 +24,31 @@ func TestAllowedHost(t *testing.T) {
 		{"", false},
 	}
 	for _, tt := range tests {
-		if got := AllowedHost(tt.host); got != tt.want {
-			t.Errorf("AllowedHost(%q) = %v, want %v", tt.host, got, tt.want)
+		if got := AllowedHostForSettings(tt.host, settings); got != tt.want {
+			t.Errorf("AllowedHostForSettings(%q) = %v, want %v", tt.host, got, tt.want)
 		}
+	}
+}
+
+func TestAllowedHostYouTubeOnly(t *testing.T) {
+	settings := config.DefaultSettings()
+	settings.AllowlistPreset = string(PresetYouTube)
+	if AllowedHostForSettings("www.google.com", settings) {
+		t.Fatal("google.com should be blocked in youtube preset")
+	}
+	if !AllowedHostForSettings("www.youtube.com", settings) {
+		t.Fatal("youtube.com should be allowed")
+	}
+}
+
+func TestAllowedHostCustom(t *testing.T) {
+	settings := config.DefaultSettings()
+	settings.AllowlistPreset = string(PresetCustom)
+	settings.CustomDomains = []string{"cdn.example.org"}
+	if !AllowedHostForSettings("media.cdn.example.org", settings) {
+		t.Fatal("expected custom domain match")
+	}
+	if AllowedHostForSettings("www.google.com", settings) {
+		t.Fatal("google.com should be blocked with custom list")
 	}
 }

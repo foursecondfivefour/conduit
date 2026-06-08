@@ -88,7 +88,7 @@ func TestConnectNonConnectMethod(t *testing.T) {
 func newTestServer(t *testing.T, dial func(context.Context, string, string) (net.Conn, error)) *Server {
 	t.Helper()
 	settings := config.DefaultSettings()
-	srv := NewServer(dns.NewResolver(), func() config.Settings { return settings })
+	srv := NewServer(dns.NewResolver(dns.ProviderCloudflare), func() config.Settings { return settings })
 	srv.dialFunc = dial
 	if _, err := srv.Start(context.Background()); err != nil {
 		t.Fatalf("start proxy: %v", err)

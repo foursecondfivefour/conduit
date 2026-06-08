@@ -7,10 +7,11 @@ import (
 )
 
 const (
-	tcpSegmentSize   = 2
-	tcpSegmentDelay  = 2 * time.Millisecond
-	tlsRecordPayload = 5
-	tlsRecordDelay   = 2 * time.Millisecond
+	defaultTCPSegmentSize   = 2
+	defaultTCPSegmentDelay  = 2 * time.Millisecond
+	defaultTLSRecordPayload = 5
+	defaultTLSRecordDelay   = 2 * time.Millisecond
+	tlsRecordDelay2         = 5 * time.Millisecond
 )
 
 // FragmentWriter sends the first TLS ClientHello using the selected DPI evasion strategy.
@@ -26,16 +27,28 @@ func NewFragmentWriter(strategy Strategy) *FragmentWriter {
 }
 
 func (f *FragmentWriter) WriteFirst(conn net.Conn, data []byte) error {
+	if f.strategy == StrategyNone {
+		_, err := conn.Write(data)
+		return err
+	}
+
 	if err := setTCPNoDelay(conn); err != nil {
-		// Best effort; fragmentation may still help on some stacks.
 		_ = err
 	}
 
 	switch f.strategy {
 	case StrategyTLSRecordFrag:
-		return writeTLSRecordFragments(conn, data)
+		return writeTLSRecordFragments(conn, data, defaultTLSRecordPayload, defaultTLSRecordDelay)
+	case StrategyTLSRecordFrag2:
+		return writeTLSRecordFragments(conn, data, 2, tlsRecordDelay2)
+	case StrategyTCPSegmentation1:
+		return writeTCPSegments(conn, data, 1, defaultTCPSegmentDelay)
+	case StrategyTCPSegmentation8:
+		return writeTCPSegments(conn, data, 8, defaultTCPSegmentDelay)
+	case StrategyTCPSegmentation:
+		return writeTCPSegments(conn, data, defaultTCPSegmentSize, defaultTCPSegmentDelay)
 	default:
-		return writeTCPSegments(conn, data)
+		return writeTCPSegments(conn, data, defaultTCPSegmentSize, defaultTCPSegmentDelay)
 	}
 }
 
@@ -63,10 +76,9 @@ func setTCPNoDelay(conn net.Conn) error {
 	return nil
 }
 
-func writeTCPSegments(conn net.Conn, data []byte) error {
-	size := tcpSegmentSize
+func writeTCPSegments(conn net.Conn, data []byte, size int, delay time.Duration) error {
 	if size <= 0 {
-		size = 2
+		size = defaultTCPSegmentSize
 	}
 	for offset := 0; offset < len(data); {
 		end := offset + size
@@ -78,22 +90,21 @@ func writeTCPSegments(conn net.Conn, data []byte) error {
 		}
 		offset = end
 		if offset < len(data) {
-			time.Sleep(tcpSegmentDelay)
+			time.Sleep(delay)
 		}
 	}
 	return nil
 }
 
-func writeTLSRecordFragments(conn net.Conn, data []byte) error {
+func writeTLSRecordFragments(conn net.Conn, data []byte, chunk int, delay time.Duration) error {
 	if len(data) < 5 {
-		return writeTCPSegments(conn, data)
+		return writeTCPSegments(conn, data, defaultTCPSegmentSize, defaultTCPSegmentDelay)
 	}
 
 	version := data[1:3]
 	payload := data[5:]
-	chunk := tlsRecordPayload
 	if chunk <= 0 {
-		chunk = 5
+		chunk = defaultTLSRecordPayload
 	}
 
 	for offset := 0; offset < len(payload); {
@@ -114,7 +125,7 @@ func writeTLSRecordFragments(conn net.Conn, data []byte) error {
 		}
 		offset = end
 		if offset < len(payload) {
-			time.Sleep(tlsRecordDelay)
+			time.Sleep(delay)
 		}
 	}
 	return nil

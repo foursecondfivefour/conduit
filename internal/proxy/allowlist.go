@@ -1,29 +1,12 @@
 package proxy
 
-import "strings"
+import "github.com/foursecondfivefour/conduit/internal/config"
 
-var allowedSuffixes = []string{
-	".youtube.com",
-	".googlevideo.com",
-	".ytimg.com",
-	".googleapis.com",
-	".ggpht.com",
-	".gstatic.com",
-	".google.com",
-	".youtube-nocookie.com",
-	".youtu.be",
-}
-
-// AllowedHost reports whether host is part of the YouTube/Google media ecosystem.
-func AllowedHost(host string) bool {
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
-	if host == "" {
-		return false
+// AllowedHostForSettings checks the host against runtime allowlist settings.
+func AllowedHostForSettings(host string, settings config.Settings) bool {
+	preset := AllowlistPreset(settings.AllowlistPreset)
+	if !preset.Valid() {
+		preset = PresetGoogleMedia
 	}
-	for _, suffix := range allowedSuffixes {
-		if host == strings.TrimPrefix(suffix, ".") || strings.HasSuffix(host, suffix) {
-			return true
-		}
-	}
-	return false
+	return AllowedHost(host, preset, settings.CustomDomains)
 }

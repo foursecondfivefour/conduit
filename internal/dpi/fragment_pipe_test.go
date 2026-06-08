@@ -20,7 +20,7 @@ func TestWriteTCPSegmentsSplitsPayload(t *testing.T) {
 		readDone <- raw
 	}()
 
-	if err := writeTCPSegments(client, data); err != nil {
+	if err := writeTCPSegments(client, data, defaultTCPSegmentSize, defaultTCPSegmentDelay); err != nil {
 		t.Fatalf("writeTCPSegments: %v", err)
 	}
 	_ = client.Close()
@@ -49,7 +49,7 @@ func TestWriteTLSRecordFragmentsReassembles(t *testing.T) {
 		readDone <- raw
 	}()
 
-	if err := writeTLSRecordFragments(client, data); err != nil {
+	if err := writeTLSRecordFragments(client, data, defaultTLSRecordPayload, defaultTLSRecordDelay); err != nil {
 		t.Fatalf("writeTLSRecordFragments: %v", err)
 	}
 	_ = client.Close()

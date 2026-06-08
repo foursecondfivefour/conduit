@@ -29,5 +29,8 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Build
-        run: go build -ldflags="-s -w -H=windowsgui" -tags production -o build/conduit.exe .
+      - name: Build conduit
+        run: go build -ldflags="-s -w -H=windowsgui -X github.com/foursecondfivefour/conduit/internal/config.Version=1.2.0" -tags production -o build/conduit.exe .
+
+      - name: Build updater
+        run: go build -ldflags="-s -w -H=windowsgui" -o build/conduit-updater.exe ./cmd/conduit-updater

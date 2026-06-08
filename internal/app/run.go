@@ -3,25 +3,45 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
+	"github.com/foursecondfivefour/conduit/internal/dns"
 	"github.com/foursecondfivefour/conduit/internal/proxy"
+	"github.com/foursecondfivefour/conduit/internal/update"
+	"github.com/foursecondfivefour/conduit/internal/winproxy"
 )
 
-// Run starts a single WebView window and a lightweight system-tray menu.
-func Run(ctx context.Context, proxyServer *proxy.Server, settings *config.Settings) error {
-	port := proxyServer.Port()
+// RunInput bundles dependencies for the GUI application loop.
+type RunInput struct {
+	Ctx        context.Context
+	Paths      RuntimePaths
+	Prefs      *preferenceStore
+	Proxy      *proxy.Server
+	Resolver   *dns.Resolver
+	Settings   *config.Settings
+	WinProxy   *winproxy.Manager
+	Updater    *update.Service
+}
+
+// Run starts the WebView window, system tray, and startup flow.
+func Run(in RunInput) error {
+	port := in.Proxy.Port()
 	if port == 0 {
 		return fmt.Errorf("proxy is not running")
 	}
 
 	proxyURL := fmt.Sprintf("http://%s:%d", config.ListenHost, port)
-
-	prefs, err := newPreferenceStore()
-	if err != nil {
-		return fmt.Errorf("preferences: %w", err)
+	p := in.Prefs.Get()
+	width := config.WindowWidth
+	height := config.WindowHeight
+	if p.WindowWidth > 0 {
+		width = p.WindowWidth
+	}
+	if p.WindowHeight > 0 {
+		height = p.WindowHeight
 	}
 
 	app := application.New(application.Options{
@@ -36,8 +56,8 @@ func Run(ctx context.Context, proxyServer *proxy.Server, settings *config.Settin
 	youtube := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:                       "conduit",
 		Title:                      "YouTube",
-		Width:                      config.WindowWidth,
-		Height:                     config.WindowHeight,
+		Width:                      width,
+		Height:                     height,
 		MinWidth:                   480,
 		MinHeight:                  360,
 		Hidden:                     true,
@@ -48,8 +68,31 @@ func Run(ctx context.Context, proxyServer *proxy.Server, settings *config.Settin
 		OpenInspectorOnStartup:     false,
 	})
 
-	flow := newStartupFlow(app, youtube, prefs)
-	setupTray(app, proxyServer, settings, flow)
+	setupWindowCloseToTray(youtube, func() bool {
+		return in.Prefs.Get().MinimizeToTray
+	})
+
+	control := NewControlService(in.Proxy, in.Resolver, in.Settings, in.Prefs)
+	flow := newStartupFlow(app, youtube, in.Prefs)
+
+	if p.SystemProxy {
+		if err := in.WinProxy.Enable(config.ListenHost, port); err != nil {
+			slog.Warn("system proxy enable failed", "err", err)
+		}
+	}
+
+	deps := trayDeps{
+		app:      app,
+		youtube:  youtube,
+		proxy:    in.Proxy,
+		control:  control,
+		prefs:    in.Prefs,
+		flow:     flow,
+		updater:  in.Updater,
+		winProxy: in.WinProxy,
+		paths:    in.Paths,
+	}
+	setupTray(deps)
 	flow.begin()
 
 	return app.Run()
