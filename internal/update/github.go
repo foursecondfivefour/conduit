@@ -80,5 +80,9 @@ func (r Release) AssetURL(name string) (string, bool) {
 }
 
 func (r Release) Version() string {
-	return strings.TrimPrefix(strings.TrimSpace(r.TagName), "v")
+	v, err := SanitizeVersion(r.TagName)
+	if err != nil {
+		return strings.TrimPrefix(strings.TrimSpace(r.TagName), "v")
+	}
+	return v
 }

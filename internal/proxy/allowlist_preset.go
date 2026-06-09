@@ -74,13 +74,11 @@ func suffixesForPreset(preset AllowlistPreset, custom []string) []string {
 }
 
 func normalizeCustomDomains(domains []string) []string {
-	out := make([]string, 0, len(domains))
-	for _, d := range domains {
+	filtered := FilterCustomDomains(domains)
+	out := make([]string, 0, len(filtered))
+	for _, d := range filtered {
 		d = strings.ToLower(strings.TrimSpace(d))
 		d = strings.TrimSuffix(d, ".")
-		if d == "" || strings.Contains(d, "*") {
-			continue
-		}
 		if !strings.HasPrefix(d, ".") {
 			d = "." + d
 		}

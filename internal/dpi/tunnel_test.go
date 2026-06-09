@@ -42,3 +42,25 @@ func TestRelayFragmentsFirstClientHello(t *testing.T) {
 		t.Fatal("timeout waiting for upstream data")
 	}
 }
+
+func BenchmarkRelay(b *testing.B) {
+	payload := make([]byte, 1400)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		client, proxySide := net.Pipe()
+		upstreamClient, upstreamServer := net.Pipe()
+
+		go func() {
+			_, _ = io.ReadAll(upstreamServer)
+			_ = upstreamServer.Close()
+		}()
+		go func() {
+			_, _ = proxySide.Write(payload)
+			_ = proxySide.Close()
+		}()
+
+		writer := NewFragmentWriter(StrategyNone)
+		_ = Relay(proxySide, upstreamClient, writer)
+		_ = client.Close()
+	}
+}

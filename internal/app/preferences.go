@@ -41,7 +41,7 @@ func DefaultPreferences(portable bool) Preferences {
 	return Preferences{
 		Strategy:            string(dpi.StrategyTCPSegmentation),
 		DoHProvider:         string(dns.ProviderCloudflare),
-		AllowlistPreset:     proxy.PresetGoogleMedia.String(),
+		AllowlistPreset:     proxy.PresetYouTube.String(),
 		Language:            "ru",
 		WindowWidth:         config.WindowWidth,
 		WindowHeight:        config.WindowHeight,
@@ -94,7 +94,11 @@ func (s *preferenceStore) load() error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return json.Unmarshal(raw, &s.data)
+	if err := json.Unmarshal(raw, &s.data); err != nil {
+		return err
+	}
+	SanitizePreferences(&s.data)
+	return nil
 }
 
 func (s *preferenceStore) saveLoop() {

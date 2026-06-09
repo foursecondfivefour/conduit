@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -46,11 +47,11 @@ func TestConnectAllowedHost(t *testing.T) {
 	rec := newHijackRecorder()
 	go srv.serve(rec, req)
 
-	if !waitBool(t, func() bool { return rec.hijacked }, 2*time.Second) {
+	if !waitBool(t, func() bool { return rec.Hijacked() }, 2*time.Second) {
 		t.Fatal("expected hijacked connection")
 	}
 
-	reader := bufio.NewReader(rec.conn)
+	reader := bufio.NewReader(rec.ClientConn())
 	line, err := reader.ReadString('\n')
 	if err != nil {
 		t.Fatalf("read response: %v", err)
@@ -97,6 +98,7 @@ func newTestServer(t *testing.T, dial func(context.Context, string, string) (net
 }
 
 type hijackRecorder struct {
+	mu       sync.Mutex
 	hijacked bool
 	conn     net.Conn
 }
@@ -111,9 +113,23 @@ func (h *hijackRecorder) WriteHeader(int)             {}
 
 func (h *hijackRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	client, server := net.Pipe()
+	h.mu.Lock()
 	h.hijacked = true
 	h.conn = client
+	h.mu.Unlock()
 	return server, bufio.NewReadWriter(bufio.NewReader(server), bufio.NewWriter(server)), nil
+}
+
+func (h *hijackRecorder) Hijacked() bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.hijacked
+}
+
+func (h *hijackRecorder) ClientConn() net.Conn {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.conn
 }
 
 var _ http.Hijacker = (*hijackRecorder)(nil)

@@ -1,7 +1,9 @@
-; Inno Setup script for Conduit v1.2.0
+; Inno Setup script for Conduit (version overridden in CI via /DMyAppVersion=...)
 
 #define MyAppName "Conduit"
-#define MyAppVersion "1.2.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "1.2.1"
+#endif
 #define MyAppPublisher "foursecondfivefour"
 #define MyAppURL "https://github.com/foursecondfivefour/conduit"
 #define MyAppExeName "conduit.exe"

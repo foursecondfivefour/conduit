@@ -29,8 +29,8 @@ func ApplyPreferences(p Preferences, settings *config.Settings) {
 		settings.AllowlistPreset = preset.String()
 	}
 
-	if len(p.CustomDomains) > 0 {
-		settings.CustomDomains = append([]string(nil), p.CustomDomains...)
+	if filtered := proxy.FilterCustomDomains(p.CustomDomains); len(filtered) > 0 {
+		settings.CustomDomains = append([]string(nil), filtered...)
 	}
 
 	settings.Language = i18n.ParseLang(p.Language).String()

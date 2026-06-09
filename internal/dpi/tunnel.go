@@ -3,7 +3,27 @@ package dpi
 import (
 	"io"
 	"net"
+	"time"
 )
+
+// idleConn resets the read deadline before each read to enforce idle timeouts.
+type idleConn struct {
+	net.Conn
+	idle time.Duration
+}
+
+// NewIdleConn wraps a connection with per-read idle deadline refresh.
+func NewIdleConn(conn net.Conn, idle time.Duration) net.Conn {
+	if conn == nil || idle <= 0 {
+		return conn
+	}
+	return &idleConn{Conn: conn, idle: idle}
+}
+
+func (c *idleConn) Read(b []byte) (int, error) {
+	_ = c.Conn.SetReadDeadline(time.Now().Add(c.idle))
+	return c.Conn.Read(b)
+}
 
 // Relay copies traffic between client and server, fragmenting only the first client→server write.
 func Relay(client, server net.Conn, writer *FragmentWriter) error {

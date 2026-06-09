@@ -20,10 +20,11 @@ var (
 	procDispatchMessage   = user32.NewProc("DispatchMessageW")
 	procDefWindowProc     = user32.NewProc("DefWindowProcW")
 	procRegisterClassEx   = user32.NewProc("RegisterClassExW")
+	procPostQuitMessage   = user32.NewProc("PostQuitMessage")
 )
 
 const (
-	wmDestroy = 0x0002
+	wmDestroy   = 0x0002
 	hwndMessage = ^uintptr(0) - 3 // (HWND)-3 message-only window
 )
 
@@ -52,7 +53,7 @@ type msg struct {
 }
 
 // setupHotkeyToggle registers Ctrl+Shift+Y on a background message loop.
-func setupHotkeyToggle(win *application.WebviewWindow) {
+func setupHotkeyToggle(win *application.WebviewWindow, stopCh <-chan struct{}) {
 	if win == nil {
 		return
 	}
@@ -63,10 +64,10 @@ func setupHotkeyToggle(win *application.WebviewWindow) {
 			win.Show()
 		}
 	})
-	go runHotkeyMessageLoop(hk)
+	go runHotkeyMessageLoop(hk, stopCh)
 }
 
-func runHotkeyMessageLoop(hk *HotkeyToggle) {
+func runHotkeyMessageLoop(hk *HotkeyToggle, stopCh <-chan struct{}) {
 	className, _ := syscall.UTF16PtrFromString("ConduitHotkeyClass")
 	hInstance, _, _ := procGetModuleHandle.Call(0)
 
@@ -103,6 +104,13 @@ func runHotkeyMessageLoop(hk *HotkeyToggle) {
 		return
 	}
 	defer hk.Unregister()
+
+	if stopCh != nil {
+		go func() {
+			<-stopCh
+			_, _, _ = procPostQuitMessage.Call(0)
+		}()
+	}
 
 	var m msg
 	for {

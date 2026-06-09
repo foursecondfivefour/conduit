@@ -56,6 +56,9 @@ func (s *Server) Start(ctx context.Context) (int, error) {
 	s.httpSrv = &http.Server{
 		Handler:           http.HandlerFunc(s.serve),
 		ReadHeaderTimeout: config.ReadHeaderTimeout,
+		ReadTimeout:       config.ReadHeaderTimeout,
+		WriteTimeout:      config.IdleTimeout,
+		IdleTimeout:       config.IdleTimeout,
 	}
 	s.mu.Unlock()
 
@@ -151,6 +154,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	defer client.Close()
 
 	_, _ = io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
+
+	client = dpi.NewIdleConn(client, config.IdleTimeout)
+	upstream = dpi.NewIdleConn(upstream, config.IdleTimeout)
 
 	writer := dpi.NewFragmentWriter(settings.Strategy)
 	_ = dpi.Relay(client, upstream, writer)

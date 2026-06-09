@@ -6,3 +6,4 @@
 .vscode/
 *.test
 coverage.out
+release_notes.md

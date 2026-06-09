@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.1] - 2026-06-09
+
+### Security
+
+- Reject broad custom allowlist suffixes (e.g. `com`, `google.com`); default preset is now **YouTube only**.
+- Auto-update: GitHub download URL allowlist, mandatory SHA256 verification, sanitized version paths.
+- Hardened `conduit-updater` path checks; release links validated before opening in browser.
+- System proxy toggle shows a warning about local open-proxy scope.
+
+### Added
+
+- Debug flags: `-pprof`, `-memprofile`, `-debug`; `docs/DEBUGGING.md`.
+- `go.uber.org/goleak` tests; `go test -race` in CI.
+- `docs/SECURITY.md` threat model and OWASP mapping.
+
+### Fixed
+
+- Tray/update scheduler and status loop stop on quit; hotkey loop exits on shutdown.
+- Proxy `IdleTimeout` and per-read idle deadlines on CONNECT tunnels.
+- DNS cache bounded (512 hosts) with eviction.
+- File log handle closed on exit.
+
 ## [1.2.0] - 2026-06-08
 
 ### Added

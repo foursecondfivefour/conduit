@@ -2,7 +2,11 @@ module github.com/foursecondfivefour/conduit
 
 go 1.25.0
 
-require github.com/wailsapp/wails/v3 v3.0.0-alpha.98
+require (
+	github.com/wailsapp/wails/v3 v3.0.0-alpha.98
+	go.uber.org/goleak v1.3.0
+	golang.org/x/sys v0.43.0
+)
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -33,6 +37,5 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

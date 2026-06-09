@@ -19,13 +19,13 @@ Designed for a small footprint: one WebView window, mobile YouTube UI, full syst
 ## Download
 
 - **Portable:** `conduit.exe` + `conduit-updater.exe` from [Latest release](https://github.com/foursecondfivefour/conduit/releases/latest)
-- **Installer:** `Conduit-Setup-1.2.0.exe` (installs to `%LocalAppData%\Programs\Conduit\`)
+- **Installer:** `Conduit-Setup-<version>.exe` from [Releases](https://github.com/foursecondfivefour/conduit/releases) (installs to `%LocalAppData%\Programs\Conduit\`)
 
 Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
 
 > Unsigned builds may show a SmartScreen prompt on first run. See [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).
 
-## Features (v1.2.0)
+## Features (v1.2.1)
 
 - Persistent settings (DPI, DoH, allowlist, language, autostart, system proxy, minimize-to-tray, auto-update)
 - DoH providers: Cloudflare, Google, Quad9
@@ -45,7 +45,7 @@ Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webvi
 
 ```powershell
 go generate ./...
-go build -ldflags="-s -w -H=windowsgui -X github.com/foursecondfivefour/conduit/internal/config.Version=1.2.0" -tags production -o build\conduit.exe .
+go build -ldflags="-s -w -H=windowsgui -X github.com/foursecondfivefour/conduit/internal/config.Version=1.2.1" -tags production -o build\conduit.exe .
 go build -ldflags="-s -w -H=windowsgui" -o build\conduit-updater.exe .\cmd\conduit-updater
 ```
 
@@ -101,7 +101,19 @@ WebView2 → CONNECT proxy → DoH DNS → TCP:443
 
 ```powershell
 go test ./...
+go test -race ./...
 ```
+
+See [docs/DEBUGGING.md](docs/DEBUGGING.md) for pprof, soak tests, and debug builds.
+
+## Security considerations
+
+- The proxy listens on **127.0.0.1** only (CONNECT, allowlist-enforced).
+- **System proxy** lets other local apps use Conduit — enable only if you understand the scope.
+- Default allowlist is **YouTube only**; avoid broad custom suffixes like `com`.
+- Auto-update requires a valid **SHA256** sidecar from GitHub releases.
+
+Details: [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Troubleshooting
 

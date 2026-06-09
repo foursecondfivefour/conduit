@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
+    tags-ignore:
+      - "v*"
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -14,8 +19,11 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version-file: go.mod
           cache: true
+
+      - name: Verify modules
+        run: go mod verify
 
       - name: Install go-winres
         run: go install github.com/tc-hib/go-winres@latest
@@ -23,14 +31,35 @@ jobs:
       - name: Embed Windows icon
         run: go generate ./...
 
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = & ./.github/scripts/read-version.ps1
+          "version=$v" >> $env:GITHUB_OUTPUT
+
       - name: Test
         run: go test ./...
+
+      - name: Test (race)
+        run: go test -race ./...
+        timeout-minutes: 15
 
       - name: Vet
         run: go vet ./...
 
       - name: Build conduit
-        run: go build -ldflags="-s -w -H=windowsgui -X github.com/foursecondfivefour/conduit/internal/config.Version=1.2.0" -tags production -o build/conduit.exe .
+        run: go build -ldflags="-s -w -H=windowsgui -X github.com/foursecondfivefour/conduit/internal/config.Version=${{ steps.ver.outputs.version }}" -tags production -o build/conduit.exe .
 
       - name: Build updater
         run: go build -ldflags="-s -w -H=windowsgui" -o build/conduit-updater.exe ./cmd/conduit-updater
+
+      - name: Upload build artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries-${{ steps.ver.outputs.version }}
+          path: |
+            build/conduit.exe
+            build/conduit-updater.exe
+          retention-days: 7

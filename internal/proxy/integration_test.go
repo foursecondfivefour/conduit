@@ -38,11 +38,11 @@ func TestIntegrationConnectAllowlistAndRelay(t *testing.T) {
 	rec := newHijackRecorder()
 	go srv.serve(rec, req)
 
-	if !waitBool(t, func() bool { return rec.hijacked }, 2*time.Second) {
+	if !waitBool(t, func() bool { return rec.Hijacked() }, 2*time.Second) {
 		t.Fatal("expected hijacked connection")
 	}
 
-	reader := bufio.NewReader(rec.conn)
+	reader := bufio.NewReader(rec.ClientConn())
 	line, err := reader.ReadString('\n')
 	if err != nil {
 		t.Fatalf("read response: %v", err)

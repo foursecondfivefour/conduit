@@ -34,7 +34,12 @@ type trayDeps struct {
 type trayUI struct {
 	deps trayDeps
 
+	stopCh   chan struct{}
+	stopOnce sync.Once
+	doneCh   chan struct{}
+
 	mu           sync.Mutex
+	checkMu      sync.Mutex
 	tray         *application.SystemTray
 	menu         *application.Menu
 	statusItem   *application.MenuItem
@@ -50,6 +55,8 @@ type trayUI struct {
 func setupTray(deps trayDeps) *trayUI {
 	ui := &trayUI{
 		deps:          deps,
+		stopCh:        make(chan struct{}),
+		doneCh:        make(chan struct{}),
 		strategyItems: make(map[dpi.Strategy]*application.MenuItem),
 		dnsItems:      make(map[dns.Provider]*application.MenuItem),
 		domainItems:   make(map[proxy.AllowlistPreset]*application.MenuItem),
@@ -70,6 +77,17 @@ func setupTray(deps trayDeps) *trayUI {
 	go ui.statusLoop()
 	startUpdateScheduler(deps.prefs, deps.updater, ui)
 	return ui
+}
+
+// stop ends background tray goroutines.
+func (ui *trayUI) stop() {
+	if ui == nil {
+		return
+	}
+	ui.stopOnce.Do(func() {
+		close(ui.stopCh)
+		<-ui.doneCh
+	})
 }
 
 func (ui *trayUI) lang() i18n.Lang {
@@ -181,7 +199,7 @@ func (ui *trayUI) rebuildMenu() {
 	})
 	openBrowser := application.NewMenuItem(i18n.T(lang, "tray.updates.browser")).OnClick(func(*application.Context) {
 		rel := ui.deps.updater.Latest()
-		if rel.HTMLURL != "" {
+		if rel.HTMLURL != "" && update.ValidateReleaseURL(rel.HTMLURL) == nil {
 			_ = openURL(rel.HTMLURL)
 		}
 	})
@@ -217,6 +235,7 @@ func (ui *trayUI) rebuildMenu() {
 		}
 	})
 	quitItem := application.NewMenuItem(i18n.T(lang, "tray.quit")).OnClick(func(*application.Context) {
+		ui.stop()
 		_ = ui.deps.winProxy.Disable()
 		ui.deps.app.Quit()
 	})
@@ -248,16 +267,23 @@ func (ui *trayUI) refreshMenu() {
 }
 
 func (ui *trayUI) refreshStatus() {
-	if ui.statusItem != nil {
-		ui.statusItem.SetLabel(ui.statusLabel(ui.deps.control.GetStatus()))
+	if ui.statusItem == nil || ui.deps.control == nil {
+		return
 	}
+	ui.statusItem.SetLabel(ui.statusLabel(ui.deps.control.GetStatus()))
 }
 
 func (ui *trayUI) statusLoop() {
+	defer close(ui.doneCh)
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	for range ticker.C {
-		ui.refreshStatus()
+	for {
+		select {
+		case <-ui.stopCh:
+			return
+		case <-ticker.C:
+			ui.refreshStatus()
+		}
 	}
 }
 
@@ -293,6 +319,7 @@ func (ui *trayUI) setLanguage(lang i18n.Lang) {
 func (ui *trayUI) toggleSystemProxy() {
 	enabled := !ui.deps.prefs.Get().SystemProxy
 	if enabled {
+		showSystemProxyWarning(ui.lang())
 		port := ui.deps.proxy.Port()
 		if err := ui.deps.winProxy.Enable(config.ListenHost, port); err != nil {
 			return
@@ -332,6 +359,11 @@ func (ui *trayUI) runHealthCheck() {
 }
 
 func (ui *trayUI) checkUpdates(manual bool) {
+	if !ui.checkMu.TryLock() {
+		return
+	}
+	defer ui.checkMu.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	skipped := ui.deps.prefs.Get().SkippedVersion
@@ -358,6 +390,7 @@ func (ui *trayUI) installUpdate() {
 	if source == "" {
 		return
 	}
+	ui.stop()
 	_ = ui.deps.winProxy.Disable()
 	if err := ui.deps.updater.Apply(target, source, os.Getpid()); err != nil {
 		return
@@ -421,16 +454,25 @@ func menuFromItems(items []*application.MenuItem) *application.Menu {
 
 func startUpdateScheduler(prefs *preferenceStore, svc *update.Service, ui *trayUI) {
 	go func() {
-		time.Sleep(config.UpdateCheckDelay)
-		ui.checkUpdates(false)
+		select {
+		case <-time.After(config.UpdateCheckDelay):
+			ui.checkUpdates(false)
+		case <-ui.stopCh:
+		}
 	}()
 	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
 		for {
-			interval := prefs.UpdateCheckInterval()
-			time.Sleep(interval)
-			last := prefs.Get().LastUpdateCheck
-			if time.Since(last) >= interval {
-				ui.checkUpdates(false)
+			select {
+			case <-ui.stopCh:
+				return
+			case <-ticker.C:
+				interval := prefs.UpdateCheckInterval()
+				last := prefs.Get().LastUpdateCheck
+				if time.Since(last) >= interval {
+					ui.checkUpdates(false)
+				}
 			}
 		}
 	}()

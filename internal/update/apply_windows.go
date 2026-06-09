@@ -11,17 +11,38 @@ import (
 )
 
 // Apply launches conduit-updater to replace the running binary and relaunch.
-func Apply(targetExe, sourceExe string, parentPID int) error {
+func Apply(targetExe, sourceExe string, parentPID int, shaPath string) error {
+	if err := ValidateTargetPath(targetExe); err != nil {
+		return err
+	}
+	if err := ValidateSourcePath(sourceExe); err != nil {
+		return err
+	}
+	if shaPath != "" {
+		if err := VerifySHA256File(sourceExe, shaPath); err != nil {
+			return err
+		}
+	}
+
 	updater, err := findUpdater(targetExe)
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(updater,
+	if err := verifyUpdater(updater); err != nil {
+		return err
+	}
+
+	args := []string{
 		"--pid", strconv.Itoa(parentPID),
 		"--target", targetExe,
 		"--source", sourceExe,
-		"--relaunch",
-	)
+	}
+	if shaPath != "" {
+		args = append(args, "--sha", shaPath)
+	}
+	args = append(args, "--relaunch")
+
+	cmd := exec.Command(updater, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Start()
@@ -42,4 +63,27 @@ func findUpdater(targetExe string) (string, error) {
 		return candidate, nil
 	}
 	return "", fmt.Errorf("update: conduit-updater.exe not found")
+}
+
+func verifyUpdater(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("update: updater stat: %w", err)
+	}
+	if info.Size() < 64*1024 {
+		return fmt.Errorf("update: updater file too small")
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	hdr := make([]byte, 2)
+	if _, err := f.Read(hdr); err != nil {
+		return err
+	}
+	if string(hdr) != "MZ" {
+		return fmt.Errorf("update: invalid updater PE header")
+	}
+	return nil
 }

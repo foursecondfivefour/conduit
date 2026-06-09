@@ -43,7 +43,7 @@ func DefaultSettings() Settings {
 	return Settings{
 		Strategy:        dpi.StrategyTCPSegmentation,
 		DoHProvider:     dns.ProviderCloudflare,
-		AllowlistPreset: "google_media",
+		AllowlistPreset: "youtube",
 		CustomDomains:   nil,
 		Language:        "ru",
 		WindowWidth:     WindowWidth,

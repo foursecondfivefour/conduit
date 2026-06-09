@@ -2,8 +2,6 @@ package update
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
 )
@@ -18,28 +17,34 @@ import (
 type State string
 
 const (
-	StateIdle       State = "idle"
-	StateChecking   State = "checking"
-	StateAvailable  State = "available"
+	StateIdle        State = "idle"
+	StateChecking    State = "checking"
+	StateAvailable   State = "available"
 	StateDownloading State = "downloading"
-	StateReady      State = "ready"
-	StateError      State = "error"
+	StateReady       State = "ready"
+	StateError       State = "error"
 )
 
 type Service struct {
-	client  *Client
-	mu      sync.RWMutex
-	state   State
-	latest  Release
-	percent int
-	err     error
-	path    string
-	shaPath string
+	client   *Client
+	// downloadURLValidator is injectable for tests (defaults to ValidateDownloadURL).
+	downloadURLValidator func(string) error
+	mu                   sync.RWMutex
+	state    State
+	latest   Release
+	percent  int
+	err      error
+	path     string
+	shaPath  string
 	onChange func()
 }
 
 func NewService() *Service {
-	return &Service{client: NewClient(), state: StateIdle}
+	return &Service{
+		client:               NewClient(),
+		downloadURLValidator: ValidateDownloadURL,
+		state:                StateIdle,
+	}
 }
 
 // OnChange registers a callback invoked when update state changes.
@@ -60,7 +65,10 @@ func (s *Service) notify() {
 
 // Apply launches the updater helper to replace the running binary.
 func (s *Service) Apply(targetExe, sourceExe string, parentPID int) error {
-	return Apply(targetExe, sourceExe, parentPID)
+	s.mu.RLock()
+	sha := s.shaPath
+	s.mu.RUnlock()
+	return Apply(targetExe, sourceExe, parentPID, sha)
 }
 
 func (s *Service) State() State {
@@ -136,8 +144,20 @@ func (s *Service) Download(ctx context.Context) error {
 		s.set(StateError, 0, err)
 		return err
 	}
+	validate := s.downloadURLValidator
+	if validate == nil {
+		validate = ValidateDownloadURL
+	}
+	if err := validate(url); err != nil {
+		s.set(StateError, 0, err)
+		return err
+	}
 
-	dir := filepath.Join(os.TempDir(), "Conduit", "update", rel.Version())
+	dir, err := UpdateDir(rel.TagName)
+	if err != nil {
+		s.set(StateError, 0, err)
+		return err
+	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		s.set(StateError, 0, err)
 		return err
@@ -147,7 +167,7 @@ func (s *Service) Download(ctx context.Context) error {
 
 	s.set(StateDownloading, 0, nil)
 
-	if err := downloadFile(ctx, url, dest, func(p int) {
+	if err := downloadFile(ctx, s.client.HTTP, url, dest, func(p int) {
 		s.set(StateDownloading, p, nil)
 	}); err != nil {
 		s.set(StateError, 0, err)
@@ -160,12 +180,22 @@ func (s *Service) Download(ctx context.Context) error {
 	}
 
 	shaURL, ok := rel.AssetURL("conduit.exe.sha256")
-	if ok {
-		_ = downloadFile(ctx, shaURL, shaDest, nil)
-		if err := verifySHA256File(dest, shaDest); err != nil {
-			s.set(StateError, 0, err)
-			return err
-		}
+	if !ok {
+		err := fmt.Errorf("update: sha256 asset not found")
+		s.set(StateError, 0, err)
+		return err
+	}
+	if err := validate(shaURL); err != nil {
+		s.set(StateError, 0, err)
+		return err
+	}
+	if err := downloadFile(ctx, s.client.HTTP, shaURL, shaDest, nil); err != nil {
+		s.set(StateError, 0, err)
+		return err
+	}
+	if err := VerifySHA256File(dest, shaDest); err != nil {
+		s.set(StateError, 0, err)
+		return err
 	}
 
 	s.mu.Lock()
@@ -190,14 +220,17 @@ func (s *Service) set(state State, percent int, err error) {
 	s.notify()
 }
 
-func downloadFile(ctx context.Context, url, dest string, progress func(int)) error {
+func downloadFile(ctx context.Context, client *http.Client, url, dest string, progress func(int)) error {
+	if client == nil {
+		client = &http.Client{Timeout: 5 * time.Minute}
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("User-Agent", "Conduit/"+config.Version)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -263,27 +296,6 @@ func verifyPE(path string) error {
 	}
 	if info.Size() < 1<<20 {
 		return fmt.Errorf("update: file too small")
-	}
-	return nil
-}
-
-func verifySHA256File(exePath, shaPath string) error {
-	raw, err := os.ReadFile(shaPath)
-	if err != nil {
-		return nil
-	}
-	want := strings.TrimSpace(string(raw))
-	if len(want) > 64 {
-		want = want[:64]
-	}
-	data, err := os.ReadFile(exePath)
-	if err != nil {
-		return err
-	}
-	sum := sha256.Sum256(data)
-	got := hex.EncodeToString(sum[:])
-	if want != "" && got != want {
-		return fmt.Errorf("update: sha256 mismatch")
 	}
 	return nil
 }

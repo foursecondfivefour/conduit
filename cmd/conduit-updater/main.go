@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/foursecondfivefour/conduit/internal/update"
 	"golang.org/x/sys/windows"
 )
 
@@ -17,12 +18,28 @@ func main() {
 	pidFlag := flag.Int("pid", 0, "parent process id")
 	target := flag.String("target", "", "path to conduit.exe to replace")
 	source := flag.String("source", "", "path to new conduit.exe")
+	sha := flag.String("sha", "", "path to conduit.exe.sha256 sidecar")
 	relaunch := flag.Bool("relaunch", false, "start target after replace")
 	flag.Parse()
 
 	if *pidFlag <= 0 || *target == "" || *source == "" {
-		fmt.Fprintln(os.Stderr, "usage: conduit-updater --pid N --target path --source path [--relaunch]")
+		fmt.Fprintln(os.Stderr, "usage: conduit-updater --pid N --target path --source path [--sha path] [--relaunch]")
 		os.Exit(2)
+	}
+
+	if err := update.ValidateTargetPath(*target); err != nil {
+		fmt.Fprintf(os.Stderr, "target: %v\n", err)
+		os.Exit(1)
+	}
+	if err := update.ValidateSourcePath(*source); err != nil {
+		fmt.Fprintf(os.Stderr, "source: %v\n", err)
+		os.Exit(1)
+	}
+	if *sha != "" {
+		if err := update.VerifySHA256File(*source, *sha); err != nil {
+			fmt.Fprintf(os.Stderr, "sha256: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	handle, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(*pidFlag))

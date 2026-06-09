@@ -10,8 +10,8 @@ import (
 
 const maxLogSize = 5 * 1024 * 1024
 
-// Setup configures slog and the standard library log to write to a rotating file.
-func Setup(logDir string) (*slog.Logger, error) {
+// Setup configures slog to write to a rotating file and returns a closer for shutdown.
+func Setup(logDir string, debug bool) (io.Closer, error) {
 	if err := os.MkdirAll(logDir, 0o700); err != nil {
 		return nil, err
 	}
@@ -20,9 +20,13 @@ func Setup(logDir string) (*slog.Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger := slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	level := slog.LevelInfo
+	if debug {
+		level = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: level}))
 	slog.SetDefault(logger)
-	return logger, nil
+	return w, nil
 }
 
 type rotatingWriter struct {

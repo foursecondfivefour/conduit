@@ -8,6 +8,7 @@ import (
 
 func TestAllowedHostGoogleMedia(t *testing.T) {
 	settings := config.DefaultSettings()
+	settings.AllowlistPreset = PresetGoogleMedia.String()
 	tests := []struct {
 		host string
 		want bool

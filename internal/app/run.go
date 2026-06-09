@@ -71,8 +71,6 @@ func Run(in RunInput) error {
 	setupWindowCloseToTray(youtube, func() bool {
 		return in.Prefs.Get().MinimizeToTray
 	})
-	setupHotkeyToggle(youtube)
-
 	control := NewControlService(in.Proxy, in.Resolver, in.Settings, in.Prefs)
 	flow := newStartupFlow(app, youtube, in.Prefs)
 
@@ -93,8 +91,16 @@ func Run(in RunInput) error {
 		winProxy: in.WinProxy,
 		paths:    in.Paths,
 	}
-	setupTray(deps)
+	tray := setupTray(deps)
+	setupHotkeyToggle(youtube, tray.stopCh)
 	flow.begin()
+
+	if in.Ctx != nil {
+		go func() {
+			<-in.Ctx.Done()
+			tray.stop()
+		}()
+	}
 
 	return app.Run()
 }

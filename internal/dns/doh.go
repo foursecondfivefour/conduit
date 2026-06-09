@@ -12,7 +12,10 @@ import (
 	"time"
 )
 
-const defaultTTL = 300 * time.Second
+const (
+	defaultTTL    = 300 * time.Second
+	maxCacheHosts = 512
+)
 
 type cacheEntry struct {
 	ips       []net.IP
@@ -78,7 +81,9 @@ func (r *Resolver) LookupIP(ctx context.Context, host string) ([]net.IP, error) 
 		ttl = defaultTTL
 	}
 	r.mu.Lock()
+	r.evictExpiredLocked(time.Now())
 	r.cache[host] = cacheEntry{ips: ips, expiresAt: time.Now().Add(ttl)}
+	r.enforceCacheCapLocked()
 	r.mu.Unlock()
 
 	return append([]net.IP(nil), ips...), nil
@@ -88,6 +93,40 @@ func (r *Resolver) ClearCache() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.cache = make(map[string]cacheEntry)
+}
+
+func (r *Resolver) evictExpiredLocked(now time.Time) {
+	for host, entry := range r.cache {
+		if now.After(entry.expiresAt) {
+			delete(r.cache, host)
+		}
+	}
+}
+
+func (r *Resolver) enforceCacheCapLocked() {
+	for len(r.cache) > maxCacheHosts {
+		var oldestHost string
+		var oldest time.Time
+		first := true
+		for host, entry := range r.cache {
+			if first || entry.expiresAt.Before(oldest) {
+				oldestHost = host
+				oldest = entry.expiresAt
+				first = false
+			}
+		}
+		if oldestHost == "" {
+			return
+		}
+		delete(r.cache, oldestHost)
+	}
+}
+
+// CacheSize returns the number of cached host entries (for tests).
+func (r *Resolver) CacheSize() int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return len(r.cache)
 }
 
 func (r *Resolver) DialContext(ctx context.Context, network, address string) (net.Conn, error) {

@@ -7,8 +7,13 @@ import (
 	"flag"
 	"log"
 	"log/slog"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
+	"runtime/pprof"
+	"strings"
 	"syscall"
 
 	"github.com/foursecondfivefour/conduit/internal/app"
@@ -24,20 +29,33 @@ func main() {
 	noGUI := flag.Bool("no-gui", false, "run proxy only (no WebView window, lowest RAM)")
 	portable := flag.Bool("portable", false, "store settings next to the executable")
 	systemProxy := flag.Bool("system-proxy", false, "enable Windows system proxy (no-gui mode)")
+	pprofAddr := flag.String("pprof", "", "enable pprof HTTP server on 127.0.0.1:port (e.g. :6060)")
+	memProfile := flag.String("memprofile", "", "write heap profile to path on exit")
+	debug := flag.Bool("debug", false, "enable debug logging")
 	flag.Parse()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	if closer, err := startPprof(*pprofAddr); err != nil {
+		log.Fatalf("pprof: %v", err)
+	} else if closer != nil {
+		defer closer()
+	}
+	if *memProfile != "" {
+		defer writeMemProfile(*memProfile)
+	}
 
 	paths, err := app.ResolveRuntimePaths(*portable)
 	if err != nil {
 		log.Fatalf("paths: %v", err)
 	}
 
-	if _, err := filelog.Setup(paths.LogDir); err != nil {
+	if logCloser, err := filelog.Setup(paths.LogDir, *debug); err != nil {
 		log.Printf("file log setup failed: %v", err)
 	} else {
-		slog.Info("conduit starting", "version", config.Version, "portable", *portable)
+		defer func() { _ = logCloser.Close() }()
+		slog.Info("conduit starting", "version", config.Version, "portable", *portable, "debug", *debug)
 	}
 
 	prefs, err := app.NewPreferenceStore(paths)
@@ -94,5 +112,45 @@ func main() {
 	defer shutdownCancel()
 	if err := proxyServer.Stop(shutdownCtx); err != nil {
 		slog.Warn("proxy shutdown error", "err", err)
+	}
+}
+
+func startPprof(addr string) (func(), error) {
+	if addr == "" {
+		return nil, nil
+	}
+	if !strings.Contains(addr, ":") {
+		addr = ":" + addr
+	}
+	host := "127.0.0.1"
+	if strings.HasPrefix(addr, ":") {
+		addr = host + addr
+	} else if !strings.HasPrefix(addr, host) {
+		addr = host + ":" + strings.TrimPrefix(addr, ":")
+	}
+
+	srv := &http.Server{Addr: addr, Handler: http.DefaultServeMux}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Warn("pprof server error", "err", err)
+		}
+	}()
+	return func() {
+		ctx, cancel := context.WithTimeout(context.Background(), config.DialTimeout)
+		defer cancel()
+		_ = srv.Shutdown(ctx)
+	}, nil
+}
+
+func writeMemProfile(path string) {
+	f, err := os.Create(path)
+	if err != nil {
+		slog.Warn("memprofile create failed", "err", err)
+		return
+	}
+	defer f.Close()
+	runtime.GC()
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		slog.Warn("memprofile write failed", "err", err)
 	}
 }
