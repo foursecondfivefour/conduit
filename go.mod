@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.98
 	go.uber.org/goleak v1.3.0
-	golang.org/x/sys v0.43.0
+	golang.org/x/sys v0.46.0
 )
 
 require (
