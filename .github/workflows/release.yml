@@ -136,7 +136,7 @@ jobs:
           & $iscc "/DMyAppVersion=${{ steps.ver.outputs.version }}" "installer\conduit.iss"
 
       - name: Download release notes
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-notes-${{ steps.ver.outputs.version }}
           path: .
