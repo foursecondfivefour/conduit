@@ -59,7 +59,6 @@ func (r *Resolver) SetProvider(provider Provider) {
 
 func (r *Resolver) LookupIP(ctx context.Context, host string) ([]net.IP, error) {
 	host = strings.TrimSuffix(strings.ToLower(host), ".")
-
 	r.mu.RLock()
 	if entry, ok := r.cache[host]; ok && time.Now().Before(entry.expiresAt) {
 		ips := append([]net.IP(nil), entry.ips...)
@@ -69,9 +68,15 @@ func (r *Resolver) LookupIP(ctx context.Context, host string) ([]net.IP, error) 
 	provider := r.provider
 	r.mu.RUnlock()
 
-	ips, ttl, err := r.queryDoH(ctx, host, provider)
+	ips, ttl, err := r.queryDoH(ctx, host, provider, "A")
 	if err != nil {
 		return nil, err
+	}
+	if len(ips) == 0 {
+		ips, ttl, err = r.queryDoH(ctx, host, provider, "AAAA")
+		if err != nil {
+			return nil, err
+		}
 	}
 	if len(ips) == 0 {
 		return nil, fmt.Errorf("dns: no addresses for %s", host)
@@ -155,11 +160,11 @@ func (r *Resolver) DialContext(ctx context.Context, network, address string) (ne
 	return nil, fmt.Errorf("dns: dial failed for %s", address)
 }
 
-func (r *Resolver) queryDoH(ctx context.Context, host string, provider Provider) ([]net.IP, time.Duration, error) {
+func (r *Resolver) queryDoH(ctx context.Context, host string, provider Provider, rrType string) ([]net.IP, time.Duration, error) {
 	endpoints := []Provider{provider, provider.Fallback()}
 	var lastErr error
 	for _, p := range endpoints {
-		ips, ttl, err := r.queryEndpoint(ctx, p.Endpoint(), host)
+		ips, ttl, err := r.queryEndpoint(ctx, p.Endpoint(), host, rrType)
 		if err == nil {
 			return ips, ttl, nil
 		}
@@ -171,14 +176,14 @@ func (r *Resolver) queryDoH(ctx context.Context, host string, provider Provider)
 	return nil, 0, fmt.Errorf("dns: all DoH endpoints failed")
 }
 
-func (r *Resolver) queryEndpoint(ctx context.Context, endpoint, host string) ([]net.IP, time.Duration, error) {
+func (r *Resolver) queryEndpoint(ctx context.Context, endpoint, host, rrType string) ([]net.IP, time.Duration, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, 0, err
 	}
 	q := req.URL.Query()
 	q.Set("name", host)
-	q.Set("type", "A")
+	q.Set("type", rrType)
 	req.URL.RawQuery = q.Encode()
 	req.Header.Set("Accept", "application/dns-json")
 
@@ -208,7 +213,7 @@ func parseDoHResponse(body []byte) ([]net.IP, time.Duration, error) {
 	var ips []net.IP
 	var minTTL int
 	for _, answer := range payload.Answer {
-		if answer.Type != 1 {
+		if answer.Type != 1 && answer.Type != 28 {
 			continue
 		}
 		ip := net.ParseIP(answer.Data)

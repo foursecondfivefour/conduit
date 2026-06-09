@@ -31,7 +31,8 @@ func main() {
 	systemProxy := flag.Bool("system-proxy", false, "enable Windows system proxy (no-gui mode)")
 	pprofAddr := flag.String("pprof", "", "enable pprof HTTP server on 127.0.0.1:port (e.g. :6060)")
 	memProfile := flag.String("memprofile", "", "write heap profile to path on exit")
-	debug := flag.Bool("debug", false, "enable debug logging")
+	debug := flag.Bool("debug", false, "enable debug logging and WebView developer tools")
+	debugInspector := flag.Bool("debug-inspector", false, "open WebView inspector on YouTube at startup (requires -debug, non-production build)")
 	flag.Parse()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -64,11 +65,9 @@ func main() {
 	}
 	defer func() { _ = prefs.Close() }()
 
-	settings := app.SettingsFromPreferences(prefs.Get())
-	resolver := dns.NewResolver(settings.DoHProvider)
-	proxyServer := proxy.NewServer(resolver, func() config.Settings {
-		return settings
-	})
+	settingsStore := app.NewSettingsStore(prefs.Get())
+	resolver := dns.NewResolver(settingsStore.Snapshot().DoHProvider)
+	proxyServer := proxy.NewServer(resolver, settingsStore.Snapshot)
 
 	winProxy := winproxy.NewManager()
 	updater := update.NewService()
@@ -100,9 +99,13 @@ func main() {
 			Prefs:    prefs,
 			Proxy:    proxyServer,
 			Resolver: resolver,
-			Settings: &settings,
+			Settings: settingsStore,
 			WinProxy: winProxy,
 			Updater:  updater,
+			UI: app.UIOptions{
+				Debug:          *debug,
+				DebugInspector: *debugInspector,
+			},
 		}); err != nil {
 			log.Fatalf("application error: %v", err)
 		}

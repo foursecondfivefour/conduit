@@ -8,7 +8,7 @@ import (
 
 const (
 	defaultTCPSegmentSize   = 2
-	defaultTCPSegmentDelay  = 2 * time.Millisecond
+	defaultTCPSegmentDelay  = 1 * time.Millisecond
 	defaultTLSRecordPayload = 5
 	defaultTLSRecordDelay   = 2 * time.Millisecond
 	tlsRecordDelay2         = 5 * time.Millisecond

@@ -24,10 +24,14 @@ func (p AllowlistPreset) String() string {
 	return string(p)
 }
 
+// YouTube playback needs Innertube/API and static assets; ads (doubleclick, pagead) stay blocked.
 var youtubeOnlySuffixes = []string{
 	".youtube.com",
 	".googlevideo.com",
 	".ytimg.com",
+	".googleapis.com",
+	".gstatic.com",
+	".ggpht.com",
 	".youtu.be",
 	".youtube-nocookie.com",
 }

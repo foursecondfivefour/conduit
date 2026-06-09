@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.2] - 2026-06-09
+
+### Added
+
+- YouTube preload: instant placeholder while `m.youtube.com` loads in a hidden window.
+- Frontend debug mode: `-debug`, `-debug-inspector`, tray DevTools/Reload, `docs/DEBUGGING.md`.
+- Thread-safe `settingsStore` for proxy/runtime settings.
+- YouTube allowlist entries: `.googleapis.com`, `.gstatic.com`, `.ggpht.com`.
+
+### Changed
+
+- DNS-over-HTTPS: query AAAA when A returns no addresses (fixes `googlevideo.com` resolution).
+- TCP segmentation delay reduced from 2ms to 1ms for faster TLS handshakes through DPI.
+
+### Fixed
+
+- Race between proxy server and settings updates on strategy/DoH changes.
+- Slow or failed YouTube startup when IPv6-only CDN hostnames were returned.
+
 ## [1.2.1] - 2026-06-09
 
 ### Security

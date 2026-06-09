@@ -19,7 +19,7 @@ const (
 	WindowWidth  = 960
 	WindowHeight = 540
 
-	SplashDuration = 2 * time.Second
+	SplashDuration = 1 * time.Second
 
 	HotkeyModifiers = 0x0002 | 0x0004 // Ctrl+Shift
 	HotkeyVK        = 0x59             // Y

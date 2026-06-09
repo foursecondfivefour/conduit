@@ -7,3 +7,4 @@
 *.test
 coverage.out
 release_notes.md
+debug-*.log

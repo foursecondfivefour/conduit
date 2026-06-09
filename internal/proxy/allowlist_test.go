@@ -37,8 +37,17 @@ func TestAllowedHostYouTubeOnly(t *testing.T) {
 	if AllowedHostForSettings("www.google.com", settings) {
 		t.Fatal("google.com should be blocked in youtube preset")
 	}
+	if AllowedHostForSettings("googleads.g.doubleclick.net", settings) {
+		t.Fatal("doubleclick should be blocked in youtube preset")
+	}
 	if !AllowedHostForSettings("www.youtube.com", settings) {
 		t.Fatal("youtube.com should be allowed")
+	}
+	if !AllowedHostForSettings("youtubei.googleapis.com", settings) {
+		t.Fatal("youtubei.googleapis.com should be allowed for playback")
+	}
+	if !AllowedHostForSettings("fonts.gstatic.com", settings) {
+		t.Fatal("gstatic.com should be allowed for assets")
 	}
 }
 

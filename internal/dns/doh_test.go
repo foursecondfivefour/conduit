@@ -21,14 +21,28 @@ func TestParseDoHResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseDoHResponse: %v", err)
 	}
-	if len(ips) != 1 {
-		t.Fatalf("got %d A records, want 1", len(ips))
+	if len(ips) != 2 {
+		t.Fatalf("got %d records, want 2", len(ips))
 	}
 	if ips[0].String() != "142.250.185.78" {
 		t.Fatalf("ip = %s", ips[0])
 	}
 	if ttl != 120*time.Second {
 		t.Fatalf("ttl = %s, want 120s", ttl)
+	}
+}
+
+func TestParseDoHResponseAAAAOnly(t *testing.T) {
+	body := []byte(`{"Answer":[{"type":28,"data":"2607:f8b0:4004:c1c::93","TTL":60}]}`)
+	ips, ttl, err := parseDoHResponse(body)
+	if err != nil {
+		t.Fatalf("parseDoHResponse: %v", err)
+	}
+	if len(ips) != 1 || ips[0].String() != "2607:f8b0:4004:c1c::93" {
+		t.Fatalf("ips = %v", ips)
+	}
+	if ttl != 60*time.Second {
+		t.Fatalf("ttl = %s", ttl)
 	}
 }
 
@@ -102,7 +116,7 @@ func TestResolverQueryMock(t *testing.T) {
 	defer srv.Close()
 
 	r := NewResolver(ProviderCloudflare)
-	ips, ttl, err := r.queryEndpoint(context.Background(), srv.URL, "example.com")
+	ips, ttl, err := r.queryEndpoint(context.Background(), srv.URL, "example.com", "A")
 	if err != nil {
 		t.Fatal(err)
 	}

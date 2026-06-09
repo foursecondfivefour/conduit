@@ -1,8 +1,8 @@
 package app
 
 // chromiumArgs returns WebView2 flags tuned for lower memory use.
-func chromiumArgs(proxyURL string) []string {
-	return []string{
+func chromiumArgs(proxyURL string, debug bool) []string {
+	args := []string{
 		"--proxy-server=" + proxyURL,
 		"--proxy-bypass-list=<-loopback>",
 		"--disable-quic",
@@ -18,4 +18,8 @@ func chromiumArgs(proxyURL string) []string {
 		"--media-cache-size=1048576",
 		"--renderer-process-limit=2",
 	}
+	if debug {
+		args = append(args, "--remote-debugging-port=9222")
+	}
+	return args
 }

@@ -29,6 +29,7 @@ type trayDeps struct {
 	updater  *update.Service
 	winProxy *winproxy.Manager
 	paths    RuntimePaths
+	ui       UIOptions
 }
 
 type trayUI struct {
@@ -240,7 +241,7 @@ func (ui *trayUI) rebuildMenu() {
 		ui.deps.app.Quit()
 	})
 
-	ui.menu = application.NewMenuFromItems(
+	items := []*application.MenuItem{
 		ui.statusItem,
 		application.NewMenuItemSeparator(),
 		application.NewSubmenu(i18n.T(lang, "tray.strategy"), strategyMenu),
@@ -254,9 +255,29 @@ func (ui *trayUI) rebuildMenu() {
 		openSettings,
 		openLog,
 		helpItem,
+	}
+	if ui.deps.ui.Debug {
+		openDevTools := application.NewMenuItem(i18n.T(lang, "tray.devtools")).OnClick(func(*application.Context) {
+			if ui.deps.youtube != nil {
+				ui.deps.youtube.OpenDevTools()
+			}
+		})
+		reloadYouTube := application.NewMenuItem(i18n.T(lang, "tray.reload_youtube")).OnClick(func(*application.Context) {
+			if ui.deps.youtube != nil {
+				ui.deps.youtube.Reload()
+			}
+		})
+		items = append(items,
+			application.NewMenuItemSeparator(),
+			openDevTools,
+			reloadYouTube,
+		)
+	}
+	items = append(items,
 		application.NewMenuItemSeparator(),
 		quitItem,
 	)
+	ui.menu = application.NewMenuFromItems(items[0], items[1:]...)
 	if ui.tray != nil {
 		ui.tray.SetMenu(ui.menu)
 	}

@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"sync"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
 	"github.com/foursecondfivefour/conduit/internal/dns"
@@ -14,16 +13,15 @@ import (
 type ControlService struct {
 	proxy    *proxy.Server
 	resolver *dns.Resolver
-	settings *config.Settings
+	store    *settingsStore
 	prefs    *preferenceStore
-	mu       sync.RWMutex
 }
 
-func NewControlService(proxyServer *proxy.Server, resolver *dns.Resolver, settings *config.Settings, prefs *preferenceStore) *ControlService {
+func NewControlService(proxyServer *proxy.Server, resolver *dns.Resolver, store *settingsStore, prefs *preferenceStore) *ControlService {
 	return &ControlService{
 		proxy:    proxyServer,
 		resolver: resolver,
-		settings: settings,
+		store:    store,
 		prefs:    prefs,
 	}
 }
@@ -37,7 +35,7 @@ type Status struct {
 }
 
 func (s *ControlService) GetStatus() Status {
-	st := s.currentSettings()
+	st := s.store.Snapshot()
 	return Status{
 		Running:  s.proxy.Running(),
 		Port:     s.proxy.Port(),
@@ -57,9 +55,9 @@ func (s *ControlService) SetStrategy(strategy dpi.Strategy) Status {
 	if !strategy.Valid() {
 		return s.GetStatus()
 	}
-	s.mu.Lock()
-	s.settings.Strategy = strategy
-	s.mu.Unlock()
+	s.store.update(func(st *config.Settings) {
+		st.Strategy = strategy
+	})
 	if s.prefs != nil {
 		s.prefs.Update(func(p *Preferences) {
 			p.Strategy = strategy.String()
@@ -75,9 +73,9 @@ func (s *ControlService) SetDoHProvider(provider dns.Provider) Status {
 	if s.resolver != nil {
 		s.resolver.SetProvider(provider)
 	}
-	s.mu.Lock()
-	s.settings.DoHProvider = provider
-	s.mu.Unlock()
+	s.store.update(func(st *config.Settings) {
+		st.DoHProvider = provider
+	})
 	if s.prefs != nil {
 		s.prefs.Update(func(p *Preferences) {
 			p.DoHProvider = provider.String()
@@ -90,9 +88,9 @@ func (s *ControlService) SetAllowlistPreset(preset proxy.AllowlistPreset) Status
 	if !preset.Valid() {
 		return s.GetStatus()
 	}
-	s.mu.Lock()
-	s.settings.AllowlistPreset = preset.String()
-	s.mu.Unlock()
+	s.store.update(func(st *config.Settings) {
+		st.AllowlistPreset = preset.String()
+	})
 	if s.prefs != nil {
 		s.prefs.Update(func(p *Preferences) {
 			p.AllowlistPreset = preset.String()
@@ -102,9 +100,9 @@ func (s *ControlService) SetAllowlistPreset(preset proxy.AllowlistPreset) Status
 }
 
 func (s *ControlService) ResetCustomDomains() Status {
-	s.mu.Lock()
-	s.settings.CustomDomains = nil
-	s.mu.Unlock()
+	s.store.update(func(st *config.Settings) {
+		st.CustomDomains = nil
+	})
 	if s.prefs != nil {
 		s.prefs.Update(func(p *Preferences) {
 			p.CustomDomains = nil
@@ -134,24 +132,14 @@ func (s *ControlService) ListAllowlistPresets() []proxy.AllowlistPreset {
 	}
 }
 
-func (s *ControlService) currentSettings() config.Settings {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	cp := *s.settings
-	if len(cp.CustomDomains) > 0 {
-		cp.CustomDomains = append([]string(nil), cp.CustomDomains...)
-	}
-	return cp
-}
-
 func (s *ControlService) Settings() config.Settings {
-	return s.currentSettings()
+	return s.store.Snapshot()
 }
 
 func (s *ControlService) SetLanguage(lang string) {
-	s.mu.Lock()
-	s.settings.Language = lang
-	s.mu.Unlock()
+	s.store.update(func(st *config.Settings) {
+		st.Language = lang
+	})
 	if s.prefs != nil {
 		s.prefs.Update(func(p *Preferences) {
 			p.Language = lang
@@ -160,5 +148,5 @@ func (s *ControlService) SetLanguage(lang string) {
 }
 
 func (s *ControlService) Language() string {
-	return s.currentSettings().Language
+	return s.store.Snapshot().Language
 }
