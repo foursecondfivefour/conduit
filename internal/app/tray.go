@@ -48,9 +48,10 @@ type trayUI struct {
 	installItem  *application.MenuItem
 	healthOK     bool
 	healthKnown  bool
-	strategyItems map[dpi.Strategy]*application.MenuItem
-	dnsItems      map[dns.Provider]*application.MenuItem
-	domainItems   map[proxy.AllowlistPreset]*application.MenuItem
+	strategyItems     map[dpi.Strategy]*application.MenuItem
+	dnsItems          map[dns.Provider]*application.MenuItem
+	domainItems       map[proxy.AllowlistPreset]*application.MenuItem
+	promptedUpdateVer string
 }
 
 func setupTray(deps trayDeps) *trayUI {
@@ -379,9 +380,9 @@ func (ui *trayUI) runHealthCheck() {
 	}
 }
 
-func (ui *trayUI) checkUpdates(manual bool) {
+func (ui *trayUI) checkUpdates(manual bool) bool {
 	if !ui.checkMu.TryLock() {
-		return
+		return false
 	}
 	defer ui.checkMu.Unlock()
 
@@ -391,15 +392,17 @@ func (ui *trayUI) checkUpdates(manual bool) {
 	available, err := ui.deps.updater.Check(ctx, skipped)
 	if err != nil {
 		ui.refreshMenu()
-		return
+		ui.syncUpdateTooltip()
+		return false
 	}
 	ui.deps.prefs.Update(func(p *Preferences) { p.LastUpdateCheck = time.Now() })
 	if available && ui.deps.prefs.Get().AutoUpdate {
 		_ = ui.deps.updater.Download(ctx)
 	}
-	if manual {
-		ui.refreshMenu()
-	}
+	ui.refreshMenu()
+	ui.syncUpdateTooltip()
+	ui.maybePromptInstall(manual)
+	return true
 }
 
 func (ui *trayUI) installUpdate() {
@@ -421,6 +424,28 @@ func (ui *trayUI) installUpdate() {
 
 func (ui *trayUI) onUpdateChange() {
 	ui.refreshMenu()
+	ui.syncUpdateTooltip()
+}
+
+func (ui *trayUI) syncUpdateTooltip() {
+	if ui.tray == nil {
+		return
+	}
+	ui.tray.SetTooltip(ui.updateStatusLabel())
+}
+
+func (ui *trayUI) maybePromptInstall(manual bool) {
+	if manual || ui.deps.updater.State() != update.StateReady {
+		return
+	}
+	ver := ui.deps.updater.Latest().TagName
+	if ver == "" || ver == ui.promptedUpdateVer {
+		return
+	}
+	ui.promptedUpdateVer = ver
+	if showUpdateReadyPrompt(ui.lang(), ver) {
+		ui.installUpdate()
+	}
 }
 
 func (ui *trayUI) updateStatusLabel() string {
@@ -475,10 +500,26 @@ func menuFromItems(items []*application.MenuItem) *application.Menu {
 
 func startUpdateScheduler(prefs *preferenceStore, svc *update.Service, ui *trayUI) {
 	go func() {
-		select {
-		case <-time.After(config.UpdateCheckDelay):
-			ui.checkUpdates(false)
-		case <-ui.stopCh:
+		retryWaits := []time.Duration{
+			config.UpdateCheckDelay,
+			time.Minute,
+			5 * time.Minute,
+		}
+		var elapsed time.Duration
+		for _, wait := range retryWaits {
+			wait -= elapsed
+			if wait < 0 {
+				wait = 0
+			}
+			elapsed += wait
+			select {
+			case <-time.After(wait):
+				if ui.checkUpdates(false) {
+					return
+				}
+			case <-ui.stopCh:
+				return
+			}
 		}
 	}()
 	go func() {

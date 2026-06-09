@@ -211,13 +211,21 @@ func (s *Service) Download(ctx context.Context) error {
 
 func (s *Service) set(state State, percent int, err error) {
 	s.mu.Lock()
+	prevState := s.state
+	prevPercent := s.percent
 	s.state = state
 	if percent >= 0 {
 		s.percent = percent
 	}
 	s.err = err
+	notify := prevState != state
+	if !notify && state == StateDownloading && percent >= 0 {
+		notify = percent/10 != prevPercent/10
+	}
 	s.mu.Unlock()
-	s.notify()
+	if notify {
+		s.notify()
+	}
 }
 
 func downloadFile(ctx context.Context, client *http.Client, url, dest string, progress func(int)) error {

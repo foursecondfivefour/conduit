@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+## [1.2.3] - 2026-06-09
+
+### Fixed
+
+- Auto-update: GitHub requests bypass system proxy; retry failed checks at 1 and 5 minutes; prompt to install when download completes; tray tooltip reflects update state.
+- Auto-update: throttle tray menu refresh during download progress (every 10%).
+
 ## [1.2.2] - 2026-06-09
 
 ### Added

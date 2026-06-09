@@ -33,7 +33,7 @@ type Client struct {
 
 func NewClient() *Client {
 	return &Client{
-		HTTP:    &http.Client{Timeout: 30 * time.Second},
+		HTTP:    directHTTPClient(30 * time.Second),
 		RepoURL: repoLatest,
 	}
 }
