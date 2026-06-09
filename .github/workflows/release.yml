@@ -73,7 +73,7 @@ jobs:
         run: ./.github/scripts/extract-changelog.ps1 -Version "${{ steps.ver.outputs.version }}"
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-notes-${{ steps.ver.outputs.version }}
           path: release_notes.md
@@ -159,7 +159,7 @@ jobs:
 
       - name: Upload release artifacts (dry run)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-build-${{ steps.ver.outputs.version }}
           path: |
