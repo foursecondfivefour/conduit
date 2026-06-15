@@ -47,3 +47,8 @@ desktop.ini
 # *.swp
 # *.swo
 # *~
+
+# Generated/transient translations data
+internal/__pycache__/
+internal/_trans_data.json
+internal/trans_*.json
