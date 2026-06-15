@@ -11,18 +11,22 @@ Conduit is a **local-first** Windows app: a loopback CONNECT proxy, optional sys
 | Malicious `preferences.json` | Broad allowlist via `customDomains` | Validation on load; reject TLD/broad suffixes |
 | Malicious release page URL | Open arbitrary URL from tray | `ValidateReleaseURL`; `ShellExecute` instead of `cmd /c start` |
 
-Out of scope: remote attackers (proxy binds `127.0.0.1` only), Authenticode signing (planned; see `docs/CODE_SIGNING.md`).
+Out of scope: remote attackers (proxy binds `127.0.0.1` only), Authenticode signing (see `docs/CODE_SIGNING.md`).
 
-## OWASP Top 10:2025 mapping (v1.2.1)
+## OWASP Top 10:2025 mapping (v1.3.0)
 
 | ID | Category | Control |
 |----|----------|---------|
-| A01 | Broken access control | Custom domain validation; default `youtube` preset |
-| A02 | Security misconfiguration | System proxy warning; prefs sanitization |
-| A03 | Supply chain | Download URL allowlist (`github.com`, `objects.githubusercontent.com`) |
-| A05 | Injection | Safe URL open; JSON prefs sanitization |
-| A08 | Integrity failures | Required SHA256; updater path validation |
-| A10 | SSRF | Release URLs restricted to repo paths |
+| A01 | Broken access control | Custom domain validation; default `youtube` preset; split tunnel enforcement |
+| A02 | Security misconfiguration | System proxy warning; prefs sanitization; SOCKS5/MASQUE localhost-only defaults |
+| A03 | Supply chain | Download URL allowlist (`github.com`, `objects.githubusercontent.com`); dependency scanning (govulncheck) |
+| A04 | Insecure design | AI strategy fallback to safe default; rate-limited health checks |
+| A05 | Injection | Safe URL open; JSON prefs sanitization; `ShellExecute` hardened |
+| A06 | Memory safety | Go memory-safe runtime; `sync.Pool` bounds; DNS cache cap (512) |
+| A07 | Cryptographic failures | TLS 1.2 minimum; SHA256 verification; ECH support |
+| A08 | Integrity failures | Required SHA256; updater path validation; reproducible builds (`-buildid=`) |
+| A09 | Data exposure | Localhost-only proxy; no telemetry; user-data in `%AppData%` only |
+| A10 | SSRF | Release URLs restricted to repo paths; upstream proxy validation |
 
 ## Reporting
 

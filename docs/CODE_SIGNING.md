@@ -11,7 +11,7 @@ Conduit releases are published **unsigned** by default. Windows SmartScreen may 
 ```powershell
 signtool sign /fd SHA256 /tr http://timestamp.digicert.com /f cert.pfx /p PASSWORD build\conduit.exe
 signtool sign /fd SHA256 /tr http://timestamp.digicert.com /f cert.pfx /p PASSWORD build\conduit-updater.exe
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /f cert.pfx /p PASSWORD build\Conduit-Setup-1.2.0.exe
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /f cert.pfx /p PASSWORD build\Conduit-Setup-1.3.0.exe
 ```
 
 4. Verify:

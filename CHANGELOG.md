@@ -36,7 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- CI: matrix testing for Go 1.24 and 1.25
+- CI: matrix testing for Go 1.25
 - CI: golangci-lint, govulncheck, gosec, and CodeQL security scanning
 - Release build: max compiler optimization flags (`-trimpath`, `-s -w -H=windowsgui`, `-buildid=`, `-tags production`)
 - Onboarding rewritten with dynamic i18n placeholders
