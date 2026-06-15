@@ -12,7 +12,7 @@
       "0409": {
         "identity": {
           "name": "Conduit",
-          "version": "1.2.3.0"
+          "version": "1.3.0.0"
         },
         "description": "Conduit — коннект-прокси с обходом DPI и встроенным плеером YouTube",
         "minimum-os": "win7",
@@ -36,22 +36,22 @@
     "#1": {
       "0000": {
         "fixed": {
-          "file_version": "1.2.3.0",
-          "product_version": "1.2.3.0"
+          "file_version": "1.3.0.0",
+          "product_version": "1.3.0.0"
         },
         "info": {
           "0419": {
             "Comments": "Conduit — легковесный HTTP CONNECT прокси с обходом DPI и встроенным плеером YouTube",
             "CompanyName": "foursecondfivefour",
             "FileDescription": "Conduit — коннект-прокси с обходом DPI и встроенным плеером YouTube",
-            "FileVersion": "1.2.3.0",
+            "FileVersion": "1.3.0.0",
             "InternalName": "conduit",
             "LegalCopyright": "Copyright (c) 2026 foursecondfivefour",
             "LegalTrademarks": "",
             "OriginalFilename": "conduit.exe",
             "PrivateBuild": "",
             "ProductName": "Conduit",
-            "ProductVersion": "1.2.3.0",
+            "ProductVersion": "1.3.0.0",
             "SpecialBuild": ""
           }
         }

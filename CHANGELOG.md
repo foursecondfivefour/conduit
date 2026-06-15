@@ -6,7 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [1.2.3] - 2026-06-09
+## [1.3.0] - 2026-06-15
+
+### Added
+
+- Full i18n support: 33 languages (RU, EN, DE, FR, ES, TR, FA, UK, BE, KK, UZ, HY, AZ, KA, RO, KY, TG, TK, TT, BA, CE, CV, SAH, BUA, OS, AV, MHR, UDM, KV, MYV, KBD, TYV, XAL)
+- SOCKS5 proxy with configurable port
+- MASQUE (HTTP/3) proxy
+- AI-powered DPI strategy selector
+- ECH (Encrypted Client Hello) support
+- Split tunneling (bypass proxy on alternate port)
+- Proxy chaining (upstream HTTP/SOCKS5)
+- PAC file URL generation
+- Speed test tool
+- Auto-DNS selection based on latency
+- DNS ad blocking with custom blocklists
+- SponsorBlock and Return YouTube Dislike integration
+- Picture-in-Picture (PiP) for YouTube
+- Background audio mode for YouTube
+- TUN mode (full system routing via proxy)
+- Auto-connect on startup
+- Multi-port proxy configuration
+- Traffic statistics window
+- Per-domain DPI strategy configuration
+- Export/import settings
+- Windows toast notifications for connection events
+- `-buildid=` linker flag for reproducible builds
+- `.golangci.yml` linter configuration
+
+### Changed
+
+- CI: matrix testing for Go 1.24 and 1.25
+- CI: golangci-lint, govulncheck, gosec, and CodeQL security scanning
+- Release build: max compiler optimization flags (`-trimpath`, `-s -w -H=windowsgui`, `-buildid=`, `-tags production`)
+- Onboarding rewritten with dynamic i18n placeholders
+- Error handling: comprehensive `slog.Warn`/`slog.Error` across all packages
+- Security: OWASP 2025 Top 10 compliance (A01-A10 fixes applied)
+- Build optimization: `sync.Pool` for buffers, rate limiting, HTTP timeouts, menu debouncing
+- Memory leak fixes: goroutine leak cleanup, race detector fixes
+- Windows resource metadata (FileDescription, CompanyName, Copyright, etc.)
+
+### Fixed
+
+- YouTube playback: added `.google.com` to allowlist, updated User-Agent
+- Statistics display: byte counting in tunnel relay
+- Language switching: all 33 language tables properly translated
+- Open Log/Open Settings: directory creation and error handling
+- DNS-over-HTTPS: TLS 1.2 minimum version enforced
+- Various race conditions in tray menu and health checks
 
 ### Fixed
 
