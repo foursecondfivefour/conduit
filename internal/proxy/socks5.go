@@ -2,28 +2,18 @@ package proxy
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net"
-	"sync"
 	"sync/atomic"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
 	"github.com/foursecondfivefour/conduit/internal/dpi"
 )
 
-var (
-	errSOCKS5Version = errors.New("socks5: unsupported version")
-	errSOCKS5Method  = errors.New("socks5: unsupported auth method")
-	errSOCKS5Command = errors.New("socks5: unsupported command")
-	errSOCKS5Address = errors.New("socks5: unsupported address type")
-)
-
 // SOCKS5Server is a SOCKS5 proxy (RFC 1928) that tunnels TCP through the DoH resolver.
 type SOCKS5Server struct {
-	mu       sync.Mutex
 	listener net.Listener
 	port     int
 	running  atomic.Bool

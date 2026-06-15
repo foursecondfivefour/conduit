@@ -29,6 +29,6 @@ func PACHandler(proxyHost string, proxyPort int, domains []string) http.HandlerF
 	pac := GeneratePAC(proxyHost, proxyPort, domains)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/x-ns-proxy-autoconfig")
-		w.Write([]byte(pac))
+		_, _ = w.Write([]byte(pac))
 	}
 }

@@ -33,6 +33,8 @@ func setAutostart(enabled bool) error {
 	return k.SetStringValue(autostartName, fmt.Sprintf(`"%s"`, exe))
 }
 
+// isAutostartEnabled checks whether the autostart registry key exists.
+//nolint:unused
 func isAutostartEnabled() bool {
 	k, err := registry.OpenKey(registry.CURRENT_USER, autostartKey, registry.QUERY_VALUE)
 	if err != nil {

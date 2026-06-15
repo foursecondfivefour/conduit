@@ -21,10 +21,10 @@ func NewTUNMode() *TUNMode {
 // Enable creates firewall rules that block all outbound traffic except Conduit.
 func (t *TUNMode) Enable(exePath string) error {
 	// Block all outbound
-	exec.Command("netsh", "advfirewall", "firewall", "add", "rule",
+	_ = exec.Command("netsh", "advfirewall", "firewall", "add", "rule",
 		"name=Conduit TUN BlockAll", "dir=out", "action=block", "enable=yes").Run()
 	// Allow Conduit executable
-	exec.Command("netsh", "advfirewall", "firewall", "add", "rule",
+	_ = exec.Command("netsh", "advfirewall", "firewall", "add", "rule",
 		"name=Conduit TUN Allow", "dir=out", "action=allow",
 		"program="+exePath, "enable=yes").Run()
 	t.enabled = true
@@ -33,9 +33,9 @@ func (t *TUNMode) Enable(exePath string) error {
 
 // Disable removes the TUN firewall rules.
 func (t *TUNMode) Disable() error {
-	exec.Command("netsh", "advfirewall", "firewall", "delete", "rule",
+	_ = exec.Command("netsh", "advfirewall", "firewall", "delete", "rule",
 		"name=Conduit TUN BlockAll").Run()
-	exec.Command("netsh", "advfirewall", "firewall", "delete", "rule",
+	_ = exec.Command("netsh", "advfirewall", "firewall", "delete", "rule",
 		"name=Conduit TUN Allow").Run()
 	t.enabled = false
 	return nil
