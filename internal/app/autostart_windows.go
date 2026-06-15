@@ -4,6 +4,7 @@ package app
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"golang.org/x/sys/windows/registry"
@@ -20,7 +21,9 @@ func setAutostart(enabled bool) error {
 	defer k.Close()
 
 	if !enabled {
-		_ = k.DeleteValue(autostartName)
+		if err := k.DeleteValue(autostartName); err != nil {
+			slog.Warn("autostart: delete value failed", "err", err)
+		}
 		return nil
 	}
 	exe, err := os.Executable()

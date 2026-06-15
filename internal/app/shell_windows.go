@@ -4,6 +4,7 @@ package app
 
 import (
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"syscall"
 	"unsafe"
@@ -45,4 +46,11 @@ func openURL(url string) error {
 		return fmt.Errorf("ShellExecute failed (code %d)", ret)
 	}
 	return nil
+}
+
+func copyToClipboard(text string) {
+	cmd := exec.Command("cmd", "/c", "echo "+text+"| clip")
+	if err := cmd.Run(); err != nil {
+		slog.Warn("copy to clipboard failed", "err", err)
+	}
 }

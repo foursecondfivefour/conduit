@@ -14,7 +14,7 @@ const (
 	IdleTimeout       = 120 * time.Second
 	ReadHeaderTimeout = 5 * time.Second
 
-	YouTubeURL = "https://m.youtube.com"
+	YouTubeURL = "https://www.youtube.com"
 
 	WindowWidth  = 960
 	WindowHeight = 540
@@ -26,17 +26,39 @@ const (
 
 	DefaultUpdateCheckInterval = 24 * time.Hour
 	UpdateCheckDelay           = 15 * time.Second
+
+	DefaultKillSwitchEnabled = false
+
+	DefaultSOCKS5Port    = 31285
+	SOCKS5PortOffset      = 1
+	SplitTunnelPortOffset = 2
+
+	PiPWidth  = 320
+	PiPHeight = 180
+
+	DefaultAdBlockURL = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+
+	DefaultMASQUEPort = 4430
 )
+
+// ProxyPortConfig defines an additional proxy port with its own settings.
+type ProxyPortConfig struct {
+	Port      int    `json:"port"`
+	TCPPort   bool   `json:"tcpPort"`
+	Strategy  string `json:"strategy"`
+	Allowlist string `json:"allowlist"`
+}
 
 // Settings holds runtime configuration shared across components.
 type Settings struct {
-	Strategy        dpi.Strategy
-	DoHProvider     dns.Provider
-	AllowlistPreset string
-	CustomDomains   []string
-	Language        string
-	WindowWidth     int
-	WindowHeight    int
+	Strategy         dpi.Strategy
+	DoHProvider      dns.Provider
+	AllowlistPreset  string
+	CustomDomains    []string
+	DomainStrategies map[string]string
+	Language         string
+	WindowWidth      int
+	WindowHeight     int
 }
 
 func DefaultSettings() Settings {

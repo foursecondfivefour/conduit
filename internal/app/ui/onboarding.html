@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Обучение — Conduit</title>
+  <title>{{I18N_ONBOARDING_TITLE}}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -131,63 +131,57 @@
       <img src="data:image/png;base64,{{ICON}}" alt="">
       <div>
         <h1>{{I18N_ONBOARDING_WELCOME}}</h1>
-        <p>Краткое знакомство с Conduit</p>
+        <p>{{I18N_ONBOARDING_SUBTITLE}}</p>
       </div>
     </div>
     <div class="progress" id="progress"></div>
     <div class="card">
       <section class="step active" data-step="0">
-        <h2>Что делает Conduit</h2>
-        <p>Conduit запускает локальный HTTP-прокси на вашем компьютере и открывает YouTube в отдельном окне. Трафик к YouTube и Google CDN идёт через этот прокси с фрагментацией TLS ClientHello.</p>
-        <p class="hint">Администраторские права не требуются.</p>
+        <h2>{{I18N_ONBOARDING_STEP1_TITLE}}</h2>
+        <p>{{I18N_ONBOARDING_STEP1_TEXT}}</p>
       </section>
       <section class="step" data-step="1">
-        <h2>Локальный прокси</h2>
-        <p>По умолчанию прокси слушает <strong>127.0.0.1:31284</strong> (или следующий свободный порт). Доступ только с вашего ПК.</p>
-        <ul>
-          <li>Разрешены только домены YouTube и Google Media</li>
-          <li>DNS через DoH (Cloudflare и Google)</li>
-        </ul>
+        <h2>{{I18N_ONBOARDING_STEP2_TITLE}}</h2>
+        <p>{{I18N_ONBOARDING_STEP2_TEXT}}</p>
       </section>
       <section class="step" data-step="2">
-        <h2>Стратегии DPI</h2>
-        <p>В меню трея можно переключать способ обхода:</p>
-        <ul>
-          <li><strong>TCP segmentation</strong> — разбиение первого ClientHello на сегменты</li>
-          <li><strong>TLS record fragmentation</strong> — фрагментация TLS-записи</li>
-        </ul>
-        <p class="hint">Если одна стратегия не работает, попробуйте другую и сбросьте DNS-кэш.</p>
+        <h2>{{I18N_ONBOARDING_STEP3_TITLE}}</h2>
+        <p>{{I18N_ONBOARDING_STEP3_TEXT}}</p>
       </section>
       <section class="step" data-step="3">
-        <h2>Меню в трее</h2>
-        <p>Иконка Conduit в области уведомлений открывает меню:</p>
-        <ul>
-          <li>Статус прокси и порт</li>
-          <li>Выбор стратегии DPI</li>
-          <li>Сброс DNS-кэша</li>
-          <li>Повторное обучение и выход</li>
-        </ul>
+        <h2>{{I18N_ONBOARDING_STEP4_TITLE}}</h2>
+        <p>{{I18N_ONBOARDING_STEP4_TEXT}}</p>
       </section>
       <section class="step" data-step="4">
-        <h2>Ответственность</h2>
-        <p>Обход сетевых ограничений может регулироваться законодательством вашей страны. Вы несёте ответственность за соблюдение местных правил.</p>
-        <p class="hint">Проект распространяется «как есть», без гарантий.</p>
+        <h2>{{I18N_ONBOARDING_STEP5_TITLE}}</h2>
+        <p>{{I18N_ONBOARDING_STEP5_TEXT}}</p>
       </section>
       <section class="step" data-step="5">
-        <h2>Готово!</h2>
-        <p>Сейчас откроется мобильная версия YouTube. Настройки всегда доступны через иконку в трее.</p>
-        <p class="hint">Приятного просмотра.</p>
+        <h2>{{I18N_ONBOARDING_STEP6_TITLE}}</h2>
+        <p>{{I18N_ONBOARDING_STEP6_TEXT}}</p>
+      </section>
+      <section class="step" data-step="6">
+        <h2>{{I18N_ONBOARDING_STEP7_TITLE}}</h2>
+        <p>{{I18N_ONBOARDING_STEP7_TEXT}}</p>
+      </section>
+      <section class="step" data-step="7">
+        <h2>{{I18N_ONBOARDING_STEP8_TITLE}}</h2>
+        <p>{{I18N_ONBOARDING_STEP8_TEXT}}</p>
       </section>
     </div>
     <div class="actions">
-      <button type="button" class="ghost" id="skip">Пропустить</button>
+      <button type="button" class="ghost" id="skip">{{I18N_ONBOARDING_SKIP}}</button>
       <div>
-        <button type="button" class="ghost" id="back" disabled>Назад</button>
-        <button type="button" class="primary" id="next">Далее</button>
+        <button type="button" class="ghost" id="back" disabled>{{I18N_ONBOARDING_BACK}}</button>
+        <button type="button" class="primary" id="next">{{I18N_ONBOARDING_NEXT}}</button>
       </div>
     </div>
   </div>
   <script>
+    var I18N_SKIP = "{{I18N_ONBOARDING_SKIP}}";
+    var I18N_BACK = "{{I18N_ONBOARDING_BACK}}";
+    var I18N_NEXT = "{{I18N_ONBOARDING_NEXT}}";
+    var I18N_FINISH = "{{I18N_ONBOARDING_FINISH}}";
     (function () {
       var steps = document.querySelectorAll(".step");
       var total = steps.length;
@@ -218,7 +212,7 @@
           dots[j].classList.toggle("active", j <= index);
         }
         backBtn.disabled = index === 0;
-        nextBtn.textContent = index === total - 1 ? "Начать" : "Далее";
+        nextBtn.textContent = index === total - 1 ? I18N_FINISH : I18N_NEXT;
       }
 
       backBtn.addEventListener("click", function () {

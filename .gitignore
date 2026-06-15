@@ -1,10 +1,49 @@
-/build/
+# Binaries
 *.exe
+*.exe~
 *.dll
-.DS_Store
-.idea/
-.vscode/
+*.so
+*.dylib
+/bin/
+
+# Test binaries & artifacts
 *.test
-coverage.out
-release_notes.md
+*.test.exe
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+*.prof
+
+# Build output
+/build/
+/dist/
+/release/
+
+# Go workspace (local only, not committed)
+go.work
+go.work.sum
+
+# Environment & secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Debug logs (generated at runtime)
 debug-*.log
+
+# PGO profiles (auto-generated)
+*.pgo
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor/IDE (uncomment as needed)
+# .idea/
+# .vscode/
+# *.swp
+# *.swo
+# *~

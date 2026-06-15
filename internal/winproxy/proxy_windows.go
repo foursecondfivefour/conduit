@@ -4,6 +4,7 @@ package winproxy
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"golang.org/x/sys/windows/registry"
@@ -68,10 +69,16 @@ func (m *Manager) Disable() error {
 	defer k.Close()
 
 	if m.saved {
-		_ = k.SetDWordValue("ProxyEnable", uint32(m.enable))
-		_ = k.SetStringValue("ProxyServer", m.server)
+		if err := k.SetDWordValue("ProxyEnable", uint32(m.enable)); err != nil {
+			slog.Warn("failed to restore proxy enable value", "err", err)
+		}
+		if err := k.SetStringValue("ProxyServer", m.server); err != nil {
+			slog.Warn("failed to restore proxy server value", "err", err)
+		}
 	} else {
-		_ = k.SetDWordValue("ProxyEnable", 0)
+		if err := k.SetDWordValue("ProxyEnable", 0); err != nil {
+			slog.Warn("failed to disable proxy", "err", err)
+		}
 	}
 	m.enabled = false
 	return notifyProxyChanged()

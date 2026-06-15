@@ -39,7 +39,9 @@ func SanitizePreferences(p *Preferences) {
 	}
 
 	lang := strings.ToLower(strings.TrimSpace(p.Language))
-	if lang != "en" && lang != "ru" {
+	switch lang {
+	case "en", "ru", "de", "fr", "es", "tr", "fa", "tt", "ba", "ce", "cv", "sah", "bua", "os", "av", "mhr", "udm", "kv", "myv", "kbd", "tyv", "xal", "uk", "be", "kk", "uz", "hy", "az", "ka", "ro", "ky", "tg", "tk":
+	default:
 		p.Language = "ru"
 	}
 
@@ -50,11 +52,30 @@ func SanitizePreferences(p *Preferences) {
 		p.WindowHeight = config.WindowHeight
 	}
 
+	// Validate per-domain strategies: drop invalid strategy strings.
+	if p.DomainStrategies != nil {
+		filtered := make(map[string]string, len(p.DomainStrategies))
+		for domain, strategy := range p.DomainStrategies {
+			if dpi.Strategy(strategy).Valid() {
+				filtered[domain] = strategy
+			}
+		}
+		p.DomainStrategies = filtered
+	}
+
 	if p.UpdateCheckInterval != "" {
 		if d, err := time.ParseDuration(p.UpdateCheckInterval); err != nil || d < time.Hour {
 			p.UpdateCheckInterval = config.DefaultUpdateCheckInterval.String()
 		}
 	} else {
 		p.UpdateCheckInterval = config.DefaultUpdateCheckInterval.String()
+	}
+
+	// Validate port values: must be between 1 and 65535.
+	if p.SOCKS5Port <= 0 || p.SOCKS5Port > 65535 {
+		p.SOCKS5Port = config.DefaultSOCKS5Port
+	}
+	if p.UpstreamPort <= 0 || p.UpstreamPort > 65535 {
+		p.UpstreamPort = 0
 	}
 }

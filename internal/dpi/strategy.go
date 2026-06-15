@@ -10,6 +10,7 @@ const (
 	StrategyTCPSegmentation8  Strategy = "tcp_segmentation_8"
 	StrategyTLSRecordFrag     Strategy = "tls_record_frag"
 	StrategyTLSRecordFrag2    Strategy = "tls_record_frag_2"
+	StrategyECH               Strategy = "ech"
 )
 
 func AllStrategies() []Strategy {
@@ -20,6 +21,7 @@ func AllStrategies() []Strategy {
 		StrategyTCPSegmentation8,
 		StrategyTLSRecordFrag,
 		StrategyTLSRecordFrag2,
+		StrategyECH,
 	}
 }
 
@@ -30,7 +32,8 @@ func (s Strategy) Valid() bool {
 		StrategyTCPSegmentation1,
 		StrategyTCPSegmentation8,
 		StrategyTLSRecordFrag,
-		StrategyTLSRecordFrag2:
+		StrategyTLSRecordFrag2,
+		StrategyECH:
 		return true
 	default:
 		return false
@@ -55,6 +58,8 @@ func (s Strategy) ShortLabel() string {
 		return "tls_frag"
 	case StrategyTLSRecordFrag2:
 		return "tls_2"
+	case StrategyECH:
+		return "ech"
 	default:
 		return string(s)
 	}

@@ -41,6 +41,13 @@ func ApplyPreferences(p Preferences, settings *config.Settings) {
 	if p.WindowHeight > 0 {
 		settings.WindowHeight = p.WindowHeight
 	}
+
+	if p.DomainStrategies != nil && len(p.DomainStrategies) > 0 {
+		settings.DomainStrategies = make(map[string]string, len(p.DomainStrategies))
+		for k, v := range p.DomainStrategies {
+			settings.DomainStrategies[k] = v
+		}
+	}
 }
 
 // SettingsFromPreferences builds a config.Settings snapshot from preferences.

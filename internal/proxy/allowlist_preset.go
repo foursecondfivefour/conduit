@@ -24,14 +24,30 @@ func (p AllowlistPreset) String() string {
 	return string(p)
 }
 
+// Domains returns the domain suffixes for this preset (without leading dot).
+func (p AllowlistPreset) Domains() []string {
+	suffixes := suffixesForPreset(p, nil)
+	domains := make([]string, 0, len(suffixes))
+	for _, s := range suffixes {
+		d := strings.TrimPrefix(s, ".")
+		if d != "" {
+			domains = append(domains, d)
+		}
+	}
+	return domains
+}
+
 // YouTube playback needs Innertube/API and static assets; ads (doubleclick, pagead) stay blocked.
+// accounts.google.com and www.google.com are required for player session auth and API calls.
 var youtubeOnlySuffixes = []string{
 	".youtube.com",
 	".googlevideo.com",
 	".ytimg.com",
 	".googleapis.com",
+	".google.com",
 	".gstatic.com",
 	".ggpht.com",
+	".googleusercontent.com",
 	".youtu.be",
 	".youtube-nocookie.com",
 }
@@ -43,6 +59,7 @@ var googleMediaSuffixes = []string{
 	".googleapis.com",
 	".ggpht.com",
 	".gstatic.com",
+	".googleusercontent.com",
 	".google.com",
 	".youtube-nocookie.com",
 	".youtu.be",

@@ -29,3 +29,29 @@ func TestProxyStartStopNoGoroutineLeak(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSOCKS5StartStopNoGoroutineLeak(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	srv := NewSOCKS5Server(DirectDialer, func() config.Settings { return config.DefaultSettings() })
+	ctx := context.Background()
+	if err := srv.Start(ctx, "127.0.0.1", 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.Stop(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMASQUEStartStopNoGoroutineLeak(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	m := NewMASQUEServer()
+	ctx := context.Background()
+	if err := m.Start(ctx, "127.0.0.1", 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Stop(); err != nil {
+		t.Fatal(err)
+	}
+}

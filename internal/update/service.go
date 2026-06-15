@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -260,8 +261,12 @@ func downloadFile(ctx context.Context, client *http.Client, url, dest string, pr
 		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
 			if _, werr := f.Write(buf[:n]); werr != nil {
-				_ = f.Close()
-				_ = os.Remove(tmp)
+				if err := f.Close(); err != nil {
+					slog.Warn("update: close failed on write error", "err", err)
+				}
+				if err := os.Remove(tmp); err != nil {
+					slog.Warn("update: remove temp failed on write error", "err", err)
+				}
 				return werr
 			}
 			written += int64(n)
@@ -273,13 +278,19 @@ func downloadFile(ctx context.Context, client *http.Client, url, dest string, pr
 			break
 		}
 		if readErr != nil {
-			_ = f.Close()
-			_ = os.Remove(tmp)
+			if err := f.Close(); err != nil {
+				slog.Warn("update: close failed on read error", "err", err)
+			}
+			if err := os.Remove(tmp); err != nil {
+				slog.Warn("update: remove temp failed on read error", "err", err)
+			}
 			return readErr
 		}
 	}
 	if err := f.Close(); err != nil {
-		_ = os.Remove(tmp)
+		if err := os.Remove(tmp); err != nil {
+			slog.Warn("update: remove temp failed on close error", "err", err)
+		}
 		return err
 	}
 	return os.Rename(tmp, dest)

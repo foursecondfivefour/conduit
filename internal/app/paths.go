@@ -42,6 +42,11 @@ func (p RuntimePaths) PreferencesPath() string {
 	return filepath.Join(p.ConfigDir, "preferences.json")
 }
 
+// WebViewDataDir is the isolated WebView2 profile (cache, storage) for Conduit.
+func (p RuntimePaths) WebViewDataDir() string {
+	return filepath.Join(p.ConfigDir, "webview2")
+}
+
 // LoadPreferences reads preferences from disk without starting the debounced store.
 func LoadPreferences(paths RuntimePaths) (Preferences, error) {
 	if err := os.MkdirAll(paths.ConfigDir, 0o700); err != nil {

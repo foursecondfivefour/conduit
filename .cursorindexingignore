@@ -1,0 +1,33 @@
+# ──────────────────────────────────────────────
+# .cursorindexingignore — исключить из индекса,
+# но файлы остаются доступны через @-ссылку в чате
+# ──────────────────────────────────────────────
+
+# Logs — большие, часто меняются, не нужны в индексе
+*.log
+debug-*.log
+
+# Coverage reports — генерируются тестами
+coverage.*
+*.coverprofile
+*.out
+profile.cov
+
+# Documentation — не код, редко нужно в поиске
+README.md
+CHANGELOG.md
+release_notes.md
+docs/screenshots/
+docs/DEBUGGING.md
+docs/SECURITY.md
+docs/CODE_SIGNING.md
+
+# Installer — Inno Setup скрипт, не код
+installer/
+
+# Embedded HTML — статика, не индексировать
+internal/app/ui/*.html
+
+# Image assets — PNG иконки, не несут кодовой логики
+*.png
+*.ico

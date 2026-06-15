@@ -1,4 +1,4 @@
-//go:generate go-winres simply --icon assets/windows/icon.ico --manifest gui --product-name Conduit --file-description Conduit --copyright Copyright (c) foursecondfivefour --out rsrc
+//go:generate go-winres make --in winres/winres.json --out rsrc
 
 package main
 
@@ -50,6 +50,9 @@ func main() {
 	paths, err := app.ResolveRuntimePaths(*portable)
 	if err != nil {
 		log.Fatalf("paths: %v", err)
+	}
+	if err := os.MkdirAll(paths.WebViewDataDir(), 0o700); err != nil {
+		log.Printf("webview profile dir: %v", err)
 	}
 
 	if logCloser, err := filelog.Setup(paths.LogDir, *debug); err != nil {

@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ type Preferences struct {
 	Autostart           bool     `json:"autostart"`
 	SystemProxy         bool     `json:"systemProxy"`
 	MinimizeToTray      bool     `json:"minimizeToTray"`
+	KillSwitch          bool     `json:"killSwitch"`
 	Portable            bool     `json:"portable"`
 	AutoUpdate          bool     `json:"autoUpdate"`
 	UpdateCheckInterval string   `json:"updateCheckInterval"`
@@ -35,6 +37,27 @@ type Preferences struct {
 	SkippedVersion      string   `json:"skippedVersion"`
 	LastHealthOK        bool     `json:"lastHealthOK"`
 	LastHealthCheck     time.Time `json:"lastHealthCheck"`
+	SponsorBlock        bool     `json:"sponsorBlock"`
+	RYD                 bool     `json:"ryd"`
+	DNSAdBlock          bool     `json:"dnsAdBlock"`
+	DNSAdBlockURL       string   `json:"dnsAdBlockURL"`
+	BackgroundAudio     bool     `json:"backgroundAudio"`
+	SOCKS5             bool                        `json:"socks5"`
+	SOCKS5Port         int                         `json:"socks5Port"`
+	DomainStrategies   map[string]string           `json:"domainStrategies"`
+	ProxyPorts         []config.ProxyPortConfig    `json:"proxyPorts"`
+	SplitTunnel        bool                        `json:"splitTunnel"`
+	UpstreamType       string                      `json:"upstreamType"`
+	UpstreamHost       string                      `json:"upstreamHost"`
+	UpstreamPort       int                         `json:"upstreamPort"`
+	UpstreamUser       string                      `json:"upstreamUser"`
+	UpstreamPassword   string                      `json:"upstreamPassword"`
+	AutoDNS            bool                        `json:"autoDNS"`
+	AutoDNSLastCheck   time.Time                   `json:"autoDNSLastCheck"`
+	AutoConnect        bool                        `json:"autoConnect"`
+	TUNMode            bool                        `json:"tunMode"`
+	MASQUE             bool                        `json:"masque"`
+	AIDPI              bool                        `json:"aiDPI"`
 }
 
 func DefaultPreferences(portable bool) Preferences {
@@ -45,6 +68,7 @@ func DefaultPreferences(portable bool) Preferences {
 		Language:            "ru",
 		WindowWidth:         config.WindowWidth,
 		WindowHeight:        config.WindowHeight,
+		KillSwitch:          config.DefaultKillSwitchEnabled,
 		AutoUpdate:          true,
 		UpdateCheckInterval: config.DefaultUpdateCheckInterval.String(),
 		Portable:            portable,
@@ -110,7 +134,9 @@ func (s *preferenceStore) saveLoop() {
 			if timer != nil {
 				timer.Stop()
 			}
-			_ = s.saveNow()
+			if err := s.saveNow(); err != nil {
+				slog.Warn("preferences: save on stop failed", "err", err)
+			}
 			close(s.doneCh)
 			return
 		case <-s.saveCh:
@@ -128,7 +154,9 @@ func (s *preferenceStore) saveLoop() {
 			}
 		case <-timerC:
 			timerC = nil
-			_ = s.saveNow()
+			if err := s.saveNow(); err != nil {
+				slog.Warn("preferences: save failed", "err", err)
+			}
 		}
 	}
 }
@@ -148,6 +176,34 @@ func (s *preferenceStore) saveNow() error {
 		return err
 	}
 	return os.WriteFile(s.path, raw, 0o600)
+}
+
+// Export writes preferences as indented JSON to the given path.
+func (s *preferenceStore) Export(path string) error {
+	s.mu.Lock()
+	raw, err := json.MarshalIndent(s.data, "", "  ")
+	s.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, raw, 0o644)
+}
+
+// Import reads and applies preferences from a JSON file.
+func (s *preferenceStore) Import(path string) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var imported Preferences
+	if err := json.Unmarshal(raw, &imported); err != nil {
+		return err
+	}
+	SanitizePreferences(&imported)
+	s.Update(func(p *Preferences) {
+		*p = imported
+	})
+	return s.saveNow()
 }
 
 func (s *preferenceStore) Close() error {

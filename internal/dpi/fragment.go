@@ -1,6 +1,7 @@
 package dpi
 
 import (
+	"log/slog"
 	"net"
 	"syscall"
 	"time"
@@ -33,7 +34,7 @@ func (f *FragmentWriter) WriteFirst(conn net.Conn, data []byte) error {
 	}
 
 	if err := setTCPNoDelay(conn); err != nil {
-		_ = err
+		slog.Warn("fragment: set TCP_NODELAY failed", "err", err)
 	}
 
 	switch f.strategy {

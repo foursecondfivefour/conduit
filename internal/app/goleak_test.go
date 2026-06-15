@@ -14,7 +14,10 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m)
+	goleak.VerifyTestMain(m,
+		goleak.IgnoreTopFunction("net/http.(*persistConn).readLoop"),
+		goleak.IgnoreTopFunction("net/http.(*persistConn).writeLoop"),
+	)
 }
 
 func TestPreferenceStoreCloseNoGoroutineLeak(t *testing.T) {

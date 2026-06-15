@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// Successful health checks through a local CONNECT proxy must not leak idle transports.
 func TestCheckYouTubeSuccessHeapStable(t *testing.T) {
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -73,7 +72,6 @@ func handleTestCONNECT(client net.Conn, targetURL string) {
 	}
 	defer up.Close()
 
-	// TLS-ish stub: forward first client bytes then bidirectional copy
 	if n > 0 {
 		_, _ = up.Write(buf[:n])
 	}

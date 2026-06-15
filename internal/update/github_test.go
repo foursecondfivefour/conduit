@@ -33,3 +33,27 @@ func TestClientLatestParsesAsset(t *testing.T) {
 		t.Fatal("expected conduit.exe asset")
 	}
 }
+
+func TestClientLatestMissingAsset(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"tag_name": "v1.3.0",
+			"html_url": "https://github.com/foursecondfivefour/conduit/releases/tag/v1.3.0",
+			"assets": [
+				{"name": "other.txt", "browser_download_url": "https://example.com/other.txt"}
+			]
+		}`))
+	}))
+	defer srv.Close()
+
+	client := &Client{HTTP: srv.Client(), RepoURL: srv.URL}
+	rel, err := client.Latest(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, ok := rel.AssetURL("conduit.exe")
+	if ok {
+		t.Fatal("should not find conduit.exe")
+	}
+}

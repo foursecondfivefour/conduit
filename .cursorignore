@@ -1,0 +1,30 @@
+# ──────────────────────────────────────────────
+# .cursorignore — жёсткая блокировка доступа AI
+# Файлы из этого списка Cursor НЕ ВИДИТ вообще:
+# не индексирует, не читает, не показывает в @ссылках
+# ──────────────────────────────────────────────
+
+# Git internals
+.git/
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+/bin/
+/build/
+/dist/
+
+# Test binaries
+*.test
+*.test.exe
+
+# Secrets — никогда не должны попасть в контекст AI
+.env
+.env.local
+*.pem
+*.key
+
+# Vendor
+vendor/

@@ -6,10 +6,9 @@ import (
 	"testing"
 )
 
-// Each CheckYouTube call builds a new http.Transport; without CloseIdleConnections heap must not grow without bound.
 func TestCheckYouTubeHeapStable(t *testing.T) {
 	ctx := context.Background()
-	proxyURL := "http://127.0.0.1:1" // fast dial failure
+	proxyURL := "http://127.0.0.1:1"
 
 	runtime.GC()
 	var before runtime.MemStats
@@ -24,7 +23,7 @@ func TestCheckYouTubeHeapStable(t *testing.T) {
 	runtime.ReadMemStats(&after)
 
 	growth := int64(after.HeapInuse) - int64(before.HeapInuse)
-	const maxGrowth = 4 << 20 // 4 MiB
+	const maxGrowth = 4 << 20
 	if growth > maxGrowth {
 		t.Fatalf("heap grew too much after 50 health checks: %d bytes (limit %d)", growth, maxGrowth)
 	}

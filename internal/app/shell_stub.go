@@ -11,3 +11,7 @@ func openFolder(path string) error {
 func openURL(url string) error {
 	return fmt.Errorf("open url not supported: %s", url)
 }
+
+func copyToClipboard(text string) {
+	// no-op on non-Windows
+}

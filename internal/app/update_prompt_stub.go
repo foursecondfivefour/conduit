@@ -7,3 +7,7 @@ import "github.com/foursecondfivefour/conduit/internal/i18n"
 func showUpdateReadyPrompt(_ i18n.Lang, _ string) bool {
 	return false
 }
+
+func showTUNWarning(_ i18n.Lang) {
+	// no-op on non-Windows
+}

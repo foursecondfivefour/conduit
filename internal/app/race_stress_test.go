@@ -15,7 +15,6 @@ import (
 	"github.com/foursecondfivefour/conduit/internal/proxy"
 )
 
-// Stresses shared settingsStore + proxy CONNECT (same wiring as main.go).
 func TestRaceSettingsProxyConcurrent(t *testing.T) {
 	store := NewSettingsStore(Preferences{Strategy: string(dpi.StrategyTCPSegmentation), DoHProvider: string(dns.ProviderCloudflare), AllowlistPreset: string(proxy.PresetYouTube)})
 	resolver := dns.NewResolver(store.Snapshot().DoHProvider)

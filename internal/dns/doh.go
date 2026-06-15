@@ -2,6 +2,7 @@ package dns
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,10 +25,22 @@ type cacheEntry struct {
 
 // Resolver resolves hostnames via DNS-over-HTTPS with in-memory caching.
 type Resolver struct {
-	client   *http.Client
-	mu       sync.RWMutex
-	cache    map[string]cacheEntry
-	provider Provider
+	client    *http.Client
+	mu        sync.RWMutex
+	cache     map[string]cacheEntry
+	provider  Provider
+	adBlocker *AdBlocker
+}
+
+var httpClient = &http.Client{
+	Timeout: 10 * time.Second,
+	Transport: &http.Transport{
+		TLSClientConfig:       &tls.Config{MinVersion: tls.VersionTLS12},
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 5 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
+		MaxIdleConns:          4,
+	},
 }
 
 func NewResolver(provider Provider) *Resolver {
@@ -35,7 +48,7 @@ func NewResolver(provider Provider) *Resolver {
 		provider = ProviderCloudflare
 	}
 	return &Resolver{
-		client:   &http.Client{Timeout: 8 * time.Second},
+		client:   httpClient,
 		cache:    make(map[string]cacheEntry),
 		provider: provider,
 	}
@@ -57,8 +70,23 @@ func (r *Resolver) SetProvider(provider Provider) {
 	r.mu.Unlock()
 }
 
+// SetAdBlocker sets the DNS-level ad blocker for blocked-domain lookups.
+func (r *Resolver) SetAdBlocker(ab *AdBlocker) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.adBlocker = ab
+}
+
 func (r *Resolver) LookupIP(ctx context.Context, host string) ([]net.IP, error) {
 	host = strings.TrimSuffix(strings.ToLower(host), ".")
+
+	r.mu.RLock()
+	adBlocker := r.adBlocker
+	r.mu.RUnlock()
+	if adBlocker != nil && adBlocker.IsBlocked(host) {
+		return []net.IP{net.ParseIP("0.0.0.0")}, nil
+	}
+
 	r.mu.RLock()
 	if entry, ok := r.cache[host]; ok && time.Now().Before(entry.expiresAt) {
 		ips := append([]net.IP(nil), entry.ips...)

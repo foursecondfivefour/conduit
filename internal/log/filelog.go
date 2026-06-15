@@ -57,8 +57,12 @@ func (w *rotatingWriter) Write(p []byte) (int, error) {
 	defer w.mu.Unlock()
 
 	if info, err := w.file.Stat(); err == nil && info.Size()+int64(len(p)) > maxLogSize {
-		_ = w.file.Close()
-		_ = os.Rename(w.path, w.path+".1")
+		if err := w.file.Close(); err != nil {
+			slog.Warn("log rotate: close failed", "err", err)
+		}
+		if err := os.Rename(w.path, w.path+".1"); err != nil {
+			slog.Warn("log rotate: rename failed", "err", err)
+		}
 		if err := w.open(); err != nil {
 			return 0, err
 		}

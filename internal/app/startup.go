@@ -58,6 +58,12 @@ type startupFlow struct {
 
 
 
+// The onboarding window shares the same WebView2 environment as the YouTube window.
+// Security note: this shared WebView2 context means cookies, localStorage, and other
+// site data are shared between the two. The onboarding window loads ephemeral local HTML
+// only (no external URLs), which mitigates cross-contamination risk. If the onboarding
+// window were ever pointed to external content, it would share the YouTube session and
+// bypass the proxy allowlist — keep it strictly local HTML.
 func newStartupFlow(app *application.App, youtube *application.WebviewWindow, prefs *preferenceStore, youtubeReady <-chan struct{}, ui UIOptions) *startupFlow {
 
 	return &startupFlow{
@@ -79,122 +85,43 @@ func newStartupFlow(app *application.App, youtube *application.WebviewWindow, pr
 
 
 func (f *startupFlow) begin() {
-
-	lang := i18n.ParseLang(f.prefs.Get().Language)
-
 	start := time.Now()
-
-
-
-	splash := f.app.Window.NewWithOptions(application.WebviewWindowOptions{
-
-		Name:             "splash",
-
-		Title:            "Conduit",
-
-		Width:            400,
-
-		Height:           360,
-
-		Frameless:        true,
-
-		DisableResize:    true,
-
-		AlwaysOnTop:      true,
-
-		BackgroundColour: application.NewRGB(13, 17, 23),
-
-		HTML:             renderHTML(lang, ui.SplashHTML),
-
-		Windows: application.WindowsWindow{
-
-			HiddenOnTaskbar: true,
-
-		},
-
-		DefaultContextMenuDisabled: true,
-
-		DevToolsEnabled:            f.ui.devToolsEnabled(),
-
-	})
-
-
-
-	splash.RegisterHook(events.Windows.WebViewNavigationCompleted, func(*application.WindowEvent) {
-
-		slog.Debug("splash navigation completed", "elapsed_ms", time.Since(start).Milliseconds())
-
-	})
-
-
-
-	splash.Center()
-
-	splash.Show()
-
-
+	needsOnboarding := f.prefs.NeedsOnboarding()
 
 	go func() {
-
 		minSplash := time.NewTimer(config.SplashDuration)
-
 		defer minSplash.Stop()
 
-
+		// Reuse the YouTube WebView loading page instead of a separate splash window (saves one WebView + renderer).
+		if !needsOnboarding {
+			f.youtube.Center()
+			f.youtube.Show()
+		}
 
 		select {
-
 		case <-minSplash.C:
-			slog.Debug("splash minimum duration elapsed", "elapsed_ms", time.Since(start).Milliseconds())
-
+			slog.Debug("startup minimum wait elapsed", "elapsed_ms", time.Since(start).Milliseconds())
 		case <-f.app.Context().Done():
-
 			return
-
 		}
 
-
-
-		if !f.prefs.NeedsOnboarding() {
-
-			waitStart := time.Now()
-
-			select {
-
-			case <-f.youtubeReady:
-				slog.Debug("youtube ready before show", "wait_ms", time.Since(waitStart).Milliseconds(), "total_ms", time.Since(start).Milliseconds())
-
-			case <-time.After(20 * time.Second):
-				slog.Debug("youtube ready timeout", "wait_ms", time.Since(waitStart).Milliseconds())
-
-			case <-f.app.Context().Done():
-
-				return
-
-			}
-
-		}
-
-
-
-		slog.Debug("closing splash", "elapsed_ms", time.Since(start).Milliseconds())
-
-		splash.Close()
-
-
-
-		if f.prefs.NeedsOnboarding() {
-
+		if needsOnboarding {
 			f.openOnboarding(false)
-
 			return
+		}
 
+		waitStart := time.Now()
+		select {
+		case <-f.youtubeReady:
+			slog.Debug("youtube ready before show", "wait_ms", time.Since(waitStart).Milliseconds(), "total_ms", time.Since(start).Milliseconds())
+		case <-time.After(20 * time.Second):
+			slog.Debug("youtube ready timeout", "wait_ms", time.Since(waitStart).Milliseconds())
+		case <-f.app.Context().Done():
+			return
 		}
 
 		f.showYouTube()
-
 	}()
-
 }
 
 
@@ -213,35 +140,22 @@ func (f *startupFlow) openOnboarding(fromTray bool) {
 
 
 
-	win := f.app.Window.NewWithOptions(application.WebviewWindowOptions{
-
-		Name:                       "onboarding",
-
-		Title:                      i18n.T(lang, "onboarding.title"),
-
-		Width:                      520,
-
-		Height:                     560,
-
-		MinWidth:                   480,
-
-		MinHeight:                  480,
-
-		Frameless:                  true,
-
-		AlwaysOnTop:                true,
-
-		BackgroundColour:           application.NewRGB(15, 20, 29),
-
-		HTML:                       renderHTML(lang, ui.OnboardingHTML),
-
-		AllowSimpleEventEmit:       true,
-
-		DefaultContextMenuDisabled: true,
-
-		DevToolsEnabled:            f.ui.devToolsEnabled(),
-
-	})
+	onboardingOpts := application.WebviewWindowOptions{
+		Name:                 "onboarding",
+		Title:                i18n.T(lang, "onboarding.title"),
+		Width:                520,
+		Height:               560,
+		MinWidth:             480,
+		MinHeight:            480,
+		Frameless:            true,
+		AlwaysOnTop:          true,
+		BackgroundColour:     application.NewRGB(15, 20, 29),
+		HTML:                 renderHTML(lang, ui.OnboardingHTML),
+		AllowSimpleEventEmit: true,
+		DevToolsEnabled:      f.ui.devToolsEnabled(),
+	}
+	applyLightweightWebviewDefaults(&onboardingOpts)
+	win := f.app.Window.NewWithOptions(onboardingOpts)
 
 
 
@@ -259,7 +173,9 @@ func (f *startupFlow) openOnboarding(fromTray bool) {
 
 			if markComplete {
 
-				_ = f.prefs.CompleteOnboarding()
+				if err := f.prefs.CompleteOnboarding(); err != nil {
+					slog.Warn("startup: complete onboarding failed", "err", err)
+				}
 
 			}
 
@@ -369,6 +285,48 @@ func renderHTML(lang i18n.Lang, template string) string {
 		"{{I18N_ONBOARDING_TITLE}}":   i18n.T(lang, "onboarding.title"),
 
 		"{{I18N_ONBOARDING_WELCOME}}": i18n.T(lang, "onboarding.welcome"),
+
+		"{{I18N_ONBOARDING_SUBTITLE}}":     i18n.T(lang, "onboarding.subtitle"),
+
+		"{{I18N_ONBOARDING_STEP1_TITLE}}":  i18n.T(lang, "onboarding.step1.title"),
+
+		"{{I18N_ONBOARDING_STEP1_TEXT}}":   i18n.T(lang, "onboarding.step1.text"),
+
+		"{{I18N_ONBOARDING_STEP2_TITLE}}":  i18n.T(lang, "onboarding.step2.title"),
+
+		"{{I18N_ONBOARDING_STEP2_TEXT}}":   i18n.T(lang, "onboarding.step2.text"),
+
+		"{{I18N_ONBOARDING_STEP3_TITLE}}":  i18n.T(lang, "onboarding.step3.title"),
+
+		"{{I18N_ONBOARDING_STEP3_TEXT}}":   i18n.T(lang, "onboarding.step3.text"),
+
+		"{{I18N_ONBOARDING_STEP4_TITLE}}":  i18n.T(lang, "onboarding.step4.title"),
+
+		"{{I18N_ONBOARDING_STEP4_TEXT}}":   i18n.T(lang, "onboarding.step4.text"),
+
+		"{{I18N_ONBOARDING_STEP5_TITLE}}":  i18n.T(lang, "onboarding.step5.title"),
+
+		"{{I18N_ONBOARDING_STEP5_TEXT}}":   i18n.T(lang, "onboarding.step5.text"),
+
+		"{{I18N_ONBOARDING_STEP6_TITLE}}":  i18n.T(lang, "onboarding.step6.title"),
+
+		"{{I18N_ONBOARDING_STEP6_TEXT}}":   i18n.T(lang, "onboarding.step6.text"),
+
+		"{{I18N_ONBOARDING_STEP7_TITLE}}":  i18n.T(lang, "onboarding.step7.title"),
+
+		"{{I18N_ONBOARDING_STEP7_TEXT}}":   i18n.T(lang, "onboarding.step7.text"),
+
+		"{{I18N_ONBOARDING_STEP8_TITLE}}":  i18n.T(lang, "onboarding.step8.title"),
+
+		"{{I18N_ONBOARDING_STEP8_TEXT}}":   i18n.T(lang, "onboarding.step8.text"),
+
+		"{{I18N_ONBOARDING_SKIP}}":         i18n.T(lang, "onboarding.skip"),
+
+		"{{I18N_ONBOARDING_BACK}}":         i18n.T(lang, "onboarding.back"),
+
+		"{{I18N_ONBOARDING_NEXT}}":         i18n.T(lang, "onboarding.next"),
+
+		"{{I18N_ONBOARDING_FINISH}}":       i18n.T(lang, "onboarding.finish"),
 
 	}
 

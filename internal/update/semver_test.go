@@ -11,6 +11,8 @@ func TestCompareVersions(t *testing.T) {
 		{"v1.3.0", "1.2.9", 1},
 		{"1.2.0", "1.2.0", 0},
 		{"1.2.0-beta", "1.2.0", 0},
+		{"2.0.0", "1.9.9", 1},
+		{"1.10.0", "1.2.0", 1},
 	}
 	for _, tt := range tests {
 		if got := Compare(tt.a, tt.b); got != tt.want {
@@ -25,5 +27,8 @@ func TestIsNewer(t *testing.T) {
 	}
 	if IsNewer("1.2.0", "1.2.0") {
 		t.Fatal("same version should not be newer")
+	}
+	if IsNewer("2.0.0", "1.0.0") {
+		t.Fatal("current newer should not be newer")
 	}
 }

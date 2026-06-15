@@ -10,3 +10,6 @@ var OnboardingHTML string
 
 //go:embed loading.html
 var LoadingHTML string
+
+//go:embed stats.html
+var StatsHTML string

@@ -29,3 +29,16 @@ func showSystemProxyWarning(lang i18n.Lang) {
 		uintptr(mbOK|mbIconWarning|mbTopmost),
 	)
 }
+
+func showTUNWarning(lang i18n.Lang) {
+	text := i18n.T(lang, "tray.tun_mode.warning")
+	title := i18n.T(lang, "tray.tun_mode")
+	textPtr, _ := syscall.UTF16PtrFromString(text)
+	titlePtr, _ := syscall.UTF16PtrFromString(title)
+	_, _, _ = procMessageBoxW.Call(
+		0,
+		uintptr(unsafe.Pointer(textPtr)),
+		uintptr(unsafe.Pointer(titlePtr)),
+		uintptr(mbOK|mbIconWarning|mbTopmost),
+	)
+}

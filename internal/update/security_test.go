@@ -70,3 +70,37 @@ func TestValidateSourceAndTargetPaths(t *testing.T) {
 		t.Fatal("expected basename check")
 	}
 }
+
+func TestSanitizeVersionEdgeCases(t *testing.T) {
+	tests := []struct {
+		input string
+		ok    bool
+	}{
+		{"1.2.3", true},
+		{"v10.20.30", true},
+		{"..", false},
+		{"v1.2.3.4", true},
+		{"", false},
+	}
+	for _, tt := range tests {
+		got, err := SanitizeVersion(tt.input)
+		if tt.ok && err != nil {
+			t.Errorf("SanitizeVersion(%q) unexpected error: %v", tt.input, err)
+		}
+		if !tt.ok && err == nil {
+			t.Errorf("SanitizeVersion(%q) expected error, got %q", tt.input, got)
+		}
+	}
+}
+
+func TestValidateDownloadURLInvalidScheme(t *testing.T) {
+	if err := ValidateDownloadURL("ftp://github.com/file"); err == nil {
+		t.Fatal("ftp scheme should be rejected")
+	}
+}
+
+func TestValidateReleaseURLInvalidHost(t *testing.T) {
+	if err := ValidateReleaseURL("https://gitlab.com/user/repo/tag/v1.0"); err == nil {
+		t.Fatal("gitlab host should be rejected")
+	}
+}

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -18,7 +19,8 @@ func CheckYouTube(ctx context.Context, proxyURL string) error {
 	client := &http.Client{
 		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxy),
+			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+			Proxy:           http.ProxyURL(proxy),
 		},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, healthCheckURL, nil)

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"unicode"
 )
@@ -27,6 +28,11 @@ func ValidateCustomDomain(domain string) error {
 	}
 	if strings.ContainsAny(d, `/\?#%`) {
 		return fmt.Errorf("invalid characters")
+	}
+
+	// Reject bare IP addresses (A10 SSRF prevention).
+	if net.ParseIP(d) != nil {
+		return fmt.Errorf("IP addresses not allowed")
 	}
 
 	labels := strings.Split(d, ".")

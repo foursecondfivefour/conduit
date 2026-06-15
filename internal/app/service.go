@@ -2,19 +2,25 @@ package app
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
 	"github.com/foursecondfivefour/conduit/internal/dns"
 	"github.com/foursecondfivefour/conduit/internal/dpi"
 	"github.com/foursecondfivefour/conduit/internal/proxy"
+	"github.com/foursecondfivefour/conduit/internal/winproxy"
 )
 
 // ControlService holds proxy controls for the system tray menu.
 type ControlService struct {
-	proxy    *proxy.Server
-	resolver *dns.Resolver
-	store    *settingsStore
-	prefs    *preferenceStore
+	proxy      *proxy.Server
+	resolver   *dns.Resolver
+	store      *settingsStore
+	prefs      *preferenceStore
+	killSwitch *proxy.KillSwitch
+	dnsLeak    *dns.LeakDetector
+	dnsBlocker *winproxy.DNSBlocker
 }
 
 func NewControlService(proxyServer *proxy.Server, resolver *dns.Resolver, store *settingsStore, prefs *preferenceStore) *ControlService {
@@ -24,6 +30,18 @@ func NewControlService(proxyServer *proxy.Server, resolver *dns.Resolver, store 
 		store:    store,
 		prefs:    prefs,
 	}
+}
+
+func (s *ControlService) SetKillSwitch(ks *proxy.KillSwitch) {
+	s.killSwitch = ks
+}
+
+func (s *ControlService) SetDNSBlocker(db *winproxy.DNSBlocker) {
+	s.dnsBlocker = db
+}
+
+func (s *ControlService) SetLeakDetector(ld *dns.LeakDetector) {
+	s.dnsLeak = ld
 }
 
 type Status struct {
@@ -47,7 +65,9 @@ func (s *ControlService) GetStatus() Status {
 
 func (s *ControlService) RestartProxy() Status {
 	ctx := context.Background()
-	_, _ = s.proxy.Restart(ctx)
+	if _, err := s.proxy.Restart(ctx); err != nil {
+		slog.Warn("proxy restart failed", "err", err)
+	}
 	return s.GetStatus()
 }
 
@@ -149,4 +169,69 @@ func (s *ControlService) SetLanguage(lang string) {
 
 func (s *ControlService) Language() string {
 	return s.store.Snapshot().Language
+}
+
+// KillSwitchEnabled returns whether the kill switch is currently active.
+func (s *ControlService) KillSwitchEnabled() bool {
+	if s.killSwitch == nil {
+		return false
+	}
+	return s.killSwitch.IsEnabled()
+}
+
+// ToggleKillSwitch enables or disables the kill switch.
+func (s *ControlService) ToggleKillSwitch(enabled bool) error {
+	if s.killSwitch == nil {
+		return nil
+	}
+	if enabled {
+		return s.killSwitch.Enable()
+	}
+	return s.killSwitch.Disable()
+}
+
+// CheckDNSLeak performs a DNS leak test using the configured DoH resolver.
+func (s *ControlService) CheckDNSLeak(ctx context.Context) (bool, error) {
+	if s.dnsLeak == nil || s.resolver == nil {
+		return false, nil
+	}
+	return s.dnsLeak.TestLeak(ctx, s.resolver)
+}
+
+// BlockSystemDNS blocks outbound UDP port 53 for all programs except Conduit.
+func (s *ControlService) BlockSystemDNS() error {
+	if s.dnsBlocker == nil {
+		return nil
+	}
+	return s.dnsBlocker.Block()
+}
+
+// UnblockSystemDNS removes the UDP port 53 block rule.
+func (s *ControlService) UnblockSystemDNS() error {
+	if s.dnsBlocker == nil {
+		return nil
+	}
+	return s.dnsBlocker.Unblock()
+}
+
+// IsSystemDNSBlocked returns whether DNS blocking is active.
+func (s *ControlService) IsSystemDNSBlocked() bool {
+	if s.dnsBlocker == nil {
+		return false
+	}
+	return s.dnsBlocker.IsBlocked()
+}
+
+// RunSpeedTest runs a speed test through the proxy.
+func (s *ControlService) RunSpeedTest() *proxy.SpeedTestResult {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return proxy.RunSpeedTest(ctx, s.proxy.ProxyURL())
+}
+
+// AutoSelectDNS automatically picks the fastest DoH provider.
+func (s *ControlService) AutoSelectDNS() (dns.Provider, time.Duration, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return dns.AutoSelectProvider(ctx, s.resolver)
 }

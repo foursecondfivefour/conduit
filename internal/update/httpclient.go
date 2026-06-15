@@ -1,6 +1,7 @@
 package update
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"net/url"
@@ -14,6 +15,7 @@ func directHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
 			Proxy: func(*http.Request) (*url.URL, error) { return nil, nil },
 			DialContext: (&net.Dialer{
 				Timeout:   timeout,

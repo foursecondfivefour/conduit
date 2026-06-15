@@ -83,3 +83,10 @@ func TestServiceDownloadRequiresSHA(t *testing.T) {
 		t.Fatal("expected error without sha asset")
 	}
 }
+
+func TestServiceNew(t *testing.T) {
+	svc := NewService()
+	if svc == nil {
+		t.Fatal("NewService returned nil")
+	}
+}
