@@ -3,6 +3,7 @@ package update
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -49,7 +50,7 @@ func TestUpdateDirPathEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := filepath.Clean(filepath.Join(os.TempDir(), "Conduit", "update"))
-	if !filepath.HasPrefix(dir, root) {
+	if !strings.HasPrefix(dir, root) {
 		t.Fatalf("dir %q outside %q", dir, root)
 	}
 }

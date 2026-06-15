@@ -126,7 +126,7 @@ func (ui *trayUI) rebuildMenu() {
 	ui.statusItem.SetEnabled(false)
 
 	// DPI strategies
-	var strategyItems []*application.MenuItem
+	strategyItems := make([]*application.MenuItem, 0, len(ui.deps.control.ListStrategies()))
 	for _, strategy := range ui.deps.control.ListStrategies() {
 		s := strategy
 		item := application.NewMenuItemRadio(strategyMenuLabel(lang, s), ui.deps.control.Settings().Strategy == s)
@@ -140,7 +140,7 @@ func (ui *trayUI) rebuildMenu() {
 	strategyMenu := menuFromItems(strategyItems)
 
 	// DNS providers
-	var dnsItems []*application.MenuItem
+	dnsItems := make([]*application.MenuItem, 0, len(ui.deps.control.ListDoHProviders()))
 	for _, provider := range ui.deps.control.ListDoHProviders() {
 		pr := provider
 		item := application.NewMenuItemRadio(provider.ShortLabel(), ui.deps.control.Settings().DoHProvider == pr)
@@ -185,7 +185,7 @@ func (ui *trayUI) rebuildMenu() {
 	dnsMenu := menuFromItems(dnsSubItems)
 
 	// Domains
-	var domainItems []*application.MenuItem
+	domainItems := make([]*application.MenuItem, 0, len(ui.deps.control.ListAllowlistPresets()))
 	for _, preset := range ui.deps.control.ListAllowlistPresets() {
 		pr := preset
 		label := domainPresetLabel(lang, pr)

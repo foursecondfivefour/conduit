@@ -130,16 +130,16 @@ func TestAIStrategySelectorProbeHost(t *testing.T) {
 		return client, nil
 	}
 
-	strat, err := selector.ProbeHost(context.Background(), "test.com", 443, dial)
-	if err != nil || strat.Valid() == false {
-		t.Fatalf("ProbeHost failed: err=%v strat=%s", err, strat)
+	strategy, err := selector.ProbeHost(context.Background(), "test.com", 443, dial)
+	if err != nil || strategy.Valid() == false {
+		t.Fatalf("ProbeHost failed: err=%v strategy=%s", err, strategy)
 	}
-	if strat == StrategyNone {
+	if strategy == StrategyNone {
 		t.Fatal("probe should not return StrategyNone")
 	}
 	cached := selector.GetStrategyForHost("test.com")
-	if cached != strat {
-		t.Fatalf("cached = %s, want %s", cached, strat)
+	if cached != strategy {
+		t.Fatalf("cached = %s, want %s", cached, strategy)
 	}
 }
 
@@ -150,12 +150,12 @@ func TestAIStrategySelectorProbeAllFail(t *testing.T) {
 		return nil, net.ErrClosed
 	}
 
-	strat, err := selector.ProbeHost(context.Background(), "bad.com", 443, dial)
+	strategy, err := selector.ProbeHost(context.Background(), "bad.com", 443, dial)
 	if err == nil {
 		t.Fatal("expected error when all probes fail")
 	}
-	if strat != StrategyTCPSegmentation8 {
-		t.Fatalf("fallback strategy = %s, want %s", strat, StrategyTCPSegmentation8)
+	if strategy != StrategyTCPSegmentation8 {
+		t.Fatalf("fallback strategy = %s, want %s", strategy, StrategyTCPSegmentation8)
 	}
 }
 

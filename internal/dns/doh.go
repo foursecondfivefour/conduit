@@ -238,7 +238,7 @@ func parseDoHResponse(body []byte) ([]net.IP, time.Duration, error) {
 		return nil, 0, err
 	}
 
-	var ips []net.IP
+	ips := make([]net.IP, 0, len(payload.Answer))
 	var minTTL int
 	for _, answer := range payload.Answer {
 		if answer.Type != 1 && answer.Type != 28 {

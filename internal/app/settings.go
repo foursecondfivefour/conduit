@@ -42,7 +42,7 @@ func ApplyPreferences(p Preferences, settings *config.Settings) {
 		settings.WindowHeight = p.WindowHeight
 	}
 
-	if p.DomainStrategies != nil && len(p.DomainStrategies) > 0 {
+	if len(p.DomainStrategies) > 0 {
 		settings.DomainStrategies = make(map[string]string, len(p.DomainStrategies))
 		for k, v := range p.DomainStrategies {
 			settings.DomainStrategies[k] = v

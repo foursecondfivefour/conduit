@@ -8,7 +8,7 @@ import (
 
 // GeneratePAC creates a PAC file that routes allowed domains through the proxy.
 func GeneratePAC(proxyHost string, proxyPort int, domains []string) string {
-	var conditions []string
+	conditions := make([]string, 0, len(domains)*2)
 	for _, d := range domains {
 		d = strings.TrimPrefix(d, ".")
 		conditions = append(conditions, fmt.Sprintf(`dnsDomainIs(host, "%s")`, d))

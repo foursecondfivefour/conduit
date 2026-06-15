@@ -31,7 +31,7 @@ type Server struct {
 	upstream   *UpstreamProxy
 	aiSelector interface {
 		GetStrategyForHost(host string) dpi.Strategy
-		RecordStrategy(host string, strat dpi.Strategy)
+		RecordStrategy(host string, strategy dpi.Strategy)
 	}
 
 	mu            sync.RWMutex
@@ -318,7 +318,7 @@ func (s *Server) SetUpstream(u *UpstreamProxy) {
 // SetAISelector attaches an AI-based DPI strategy selector to the server.
 func (s *Server) SetAISelector(as interface {
 	GetStrategyForHost(host string) dpi.Strategy
-	RecordStrategy(host string, strat dpi.Strategy)
+	RecordStrategy(host string, strategy dpi.Strategy)
 }) {
 	s.aiSelector = as
 }

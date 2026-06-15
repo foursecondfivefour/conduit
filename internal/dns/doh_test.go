@@ -312,7 +312,5 @@ func TestAdBlockerNotBlockedWhenNoBlocker(t *testing.T) {
 
 func TestLeakDetectorStructure(t *testing.T) {
 	d := &LeakDetector{}
-	if d == nil {
-		t.Fatal("LeakDetector should not be nil")
-	}
+	_ = d // ensure d is used; it can never be nil after allocation
 }

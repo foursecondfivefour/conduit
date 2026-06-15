@@ -56,6 +56,7 @@ func DialChain(ctx context.Context, upstream *UpstreamProxy, targetNetwork, targ
 		conn.Close()
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		conn.Close()
 		return nil, fmt.Errorf("upstream proxy returned %d", resp.StatusCode)

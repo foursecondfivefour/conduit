@@ -12,14 +12,14 @@ import (
 type AIStrategySelector struct {
 	mu           sync.RWMutex
 	cache        map[string]Strategy
-	defaultStrat Strategy
+	defaultStrategy Strategy
 }
 
 // NewAIStrategySelector creates a new AI strategy selector with a default fallback.
-func NewAIStrategySelector(defaultStrat Strategy) *AIStrategySelector {
+func NewAIStrategySelector(defaultStrategy Strategy) *AIStrategySelector {
 	return &AIStrategySelector{
-		cache:        make(map[string]Strategy),
-		defaultStrat: defaultStrat,
+		cache:           make(map[string]Strategy),
+		defaultStrategy: defaultStrategy,
 	}
 }
 
@@ -28,17 +28,17 @@ func NewAIStrategySelector(defaultStrat Strategy) *AIStrategySelector {
 func (s *AIStrategySelector) GetStrategyForHost(host string) Strategy {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if strat, ok := s.cache[host]; ok {
-		return strat
+	if strategy, ok := s.cache[host]; ok {
+		return strategy
 	}
-	return s.defaultStrat
+	return s.defaultStrategy
 }
 
 // RecordStrategy memorizes a working strategy for a host.
-func (s *AIStrategySelector) RecordStrategy(host string, strat Strategy) {
+func (s *AIStrategySelector) RecordStrategy(host string, strategy Strategy) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.cache[host] = strat
+	s.cache[host] = strategy
 }
 
 // ProbeHost tries all strategies against a host and returns the first working one.
@@ -47,8 +47,8 @@ func (s *AIStrategySelector) ProbeHost(ctx context.Context, host string, port in
 	strategies := AllStrategies()
 	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	for _, strat := range strategies {
-		if strat == StrategyNone {
+	for _, strategyCandidate := range strategies {
+		if strategyCandidate == StrategyNone {
 			continue // skip "none" — prefer fragmentation
 		}
 		conn, err := dial(ctx, "tcp", address)
@@ -56,9 +56,9 @@ func (s *AIStrategySelector) ProbeHost(ctx context.Context, host string, port in
 			continue
 		}
 		conn.Close()
-		s.RecordStrategy(host, strat)
-		return strat, nil
+		s.RecordStrategy(host, strategyCandidate)
+		return strategyCandidate, nil
 	}
 
-	return s.defaultStrat, fmt.Errorf("no working strategy found for %s", host)
+	return s.defaultStrategy, fmt.Errorf("no working strategy found for %s", host)
 }
