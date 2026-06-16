@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os/exec"
-	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -17,12 +16,32 @@ var (
 	procShellExecuteW = shell32.NewProc("ShellExecuteW")
 )
 
-const swShowNormal = 1
+const (
+	swShowNormal = 1
+	swShow       = 5
+)
 
 func openFolder(path string) error {
-	cmd := exec.Command("explorer", path)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd.Start()
+	pathPtr, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	verbPtr, err := windows.UTF16PtrFromString("explore")
+	if err != nil {
+		return err
+	}
+	ret, _, _ := procShellExecuteW.Call(
+		0,
+		uintptr(unsafe.Pointer(verbPtr)),
+		uintptr(unsafe.Pointer(pathPtr)),
+		0,
+		0,
+		swShow,
+	)
+	if ret <= 32 {
+		return fmt.Errorf("ShellExecuteW explore failed (code %d)", ret)
+	}
+	return nil
 }
 
 func openURL(url string) error {
