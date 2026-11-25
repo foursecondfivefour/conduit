@@ -43,8 +43,6 @@ type Preferences struct {
 	DNSAdBlockURL       string            `json:"dnsAdBlockURL"`
 	BackgroundAudio     bool              `json:"backgroundAudio"`
 	DomainStrategies    map[string]string `json:"domainStrategies"`
-	AutoDNS             bool              `json:"autoDNS"`
-	AutoDNSLastCheck    time.Time         `json:"autoDNSLastCheck"`
 	AutoConnect         bool              `json:"autoConnect"`
 }
 

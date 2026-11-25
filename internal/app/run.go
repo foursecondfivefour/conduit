@@ -99,10 +99,6 @@ func Run(in RunInput) error {
 	dnsLeak := &dns.LeakDetector{}
 	dnsBlocker := winproxy.NewDNSBlocker()
 
-	// Create TrafficStats
-	stats := proxy.NewTrafficStats()
-	in.Proxy.SetStats(stats)
-
 	// Feature 4.6: Auto-Connect on startup
 	if p.AutoConnect {
 		if err := in.WinProxy.Enable(config.ListenHost, port); err != nil {
@@ -200,7 +196,6 @@ func Run(in RunInput) error {
 		ui:        in.UI,
 		pip:       pip,
 		adBlocker: adBlocker,
-		stats:     stats,
 	}
 	tray := setupTray(deps)
 	setupHotkeyToggle(youtube, tray.stopCh)

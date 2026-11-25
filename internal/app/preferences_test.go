@@ -111,7 +111,6 @@ func TestPreferencesNewFieldsRoundTrip(t *testing.T) {
 	want.DNSAdBlock = true
 	want.DNSAdBlockURL = config.DefaultAdBlockURL
 	want.BackgroundAudio = true
-	want.AutoDNS = true
 	want.AutoConnect = true
 	want.DomainStrategies = map[string]string{
 		"www.youtube.com": string(dpi.StrategyTLSRecordFrag),
@@ -146,9 +145,6 @@ func TestPreferencesNewFieldsRoundTrip(t *testing.T) {
 	}
 	if !got.BackgroundAudio {
 		t.Fatal("BackgroundAudio should be true")
-	}
-	if !got.AutoDNS {
-		t.Fatal("AutoDNS should be true")
 	}
 	if !got.AutoConnect {
 		t.Fatal("AutoConnect should be true")
