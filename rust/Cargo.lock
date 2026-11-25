@@ -9,3 +9,7 @@ version = "0.1.0"
 [[package]]
 name = "conduit-dpi"
 version = "0.1.0"
+
+[[package]]
+name = "conduit-tui"
+version = "0.1.0"
