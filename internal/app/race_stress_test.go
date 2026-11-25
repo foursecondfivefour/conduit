@@ -50,8 +50,10 @@ func TestRaceSettingsProxyConcurrent(t *testing.T) {
 				case <-stop:
 					return
 				default:
-					req, _ := http.NewRequest(http.MethodConnect, "http://www.youtube.com:443", nil)
-					req.Host = "www.youtube.com:443"
+					// Only exercise the settings/proxy race: ask for a host the
+					// default YouTube allowlist rejects, so no dial ever happens.
+					req, _ := http.NewRequest(http.MethodConnect, "http://not-allowed.invalid:443", nil)
+					req.Host = "not-allowed.invalid:443"
 					_, _ = client.Do(req)
 				}
 			}

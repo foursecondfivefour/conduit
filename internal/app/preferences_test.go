@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -67,7 +68,7 @@ func TestPreferencesRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := writeTestFile(paths.PreferencesPath(), raw); err != nil {
+	if err := os.WriteFile(paths.PreferencesPath(), raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -112,15 +113,12 @@ func TestPreferencesNewFieldsRoundTrip(t *testing.T) {
 	want.DNSAdBlockURL = config.DefaultAdBlockURL
 	want.BackgroundAudio = true
 	want.AutoConnect = true
-	want.DomainStrategies = map[string]string{
-		"www.youtube.com": string(dpi.StrategyTLSRecordFrag),
-	}
 
 	raw, err := json.MarshalIndent(want, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := writeTestFile(paths.PreferencesPath(), raw); err != nil {
+	if err := os.WriteFile(paths.PreferencesPath(), raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -149,52 +147,6 @@ func TestPreferencesNewFieldsRoundTrip(t *testing.T) {
 	if !got.AutoConnect {
 		t.Fatal("AutoConnect should be true")
 	}
-	if len(got.DomainStrategies) != 1 {
-		t.Fatalf("DomainStrategies len = %d, want 1", len(got.DomainStrategies))
-	}
-}
-
-func TestPreferencesExportImport(t *testing.T) {
-	dir := t.TempDir()
-	paths := RuntimePaths{ConfigDir: dir, LogDir: filepath.Join(dir, "logs")}
-	store, err := newPreferenceStore(paths)
-	if err != nil {
-		t.Fatalf("new store: %v", err)
-	}
-	defer store.Close()
-
-	store.Update(func(p *Preferences) {
-		p.KillSwitch = true
-		p.Language = "en"
-		p.Strategy = string(dpi.StrategyTLSRecordFrag2)
-	})
-	time.Sleep(300 * time.Millisecond)
-
-	exportPath := filepath.Join(dir, "export.json")
-	if err := store.Export(exportPath); err != nil {
-		t.Fatalf("export: %v", err)
-	}
-
-	store2, err := newPreferenceStore(RuntimePaths{ConfigDir: filepath.Join(dir, "import"), LogDir: filepath.Join(dir, "logs2")})
-	if err != nil {
-		t.Fatalf("new store2: %v", err)
-	}
-	defer store2.Close()
-
-	if err := store2.Import(exportPath); err != nil {
-		t.Fatalf("import: %v", err)
-	}
-
-	got := store2.Get()
-	if got.Language != "en" {
-		t.Fatalf("imported language = %s", got.Language)
-	}
-	if got.Strategy != string(dpi.StrategyTLSRecordFrag2) {
-		t.Fatalf("imported strategy = %s", got.Strategy)
-	}
-	if !got.KillSwitch {
-		t.Fatal("imported killSwitch should be true")
-	}
 }
 
 func TestPreferencesDefaultFields(t *testing.T) {
@@ -217,12 +169,4 @@ func TestPreferencesDefaultFields(t *testing.T) {
 	if p.KillSwitch {
 		t.Fatal("KillSwitch should default to false")
 	}
-}
-
-func writeTestFile(path string, data []byte) error {
-	return osWriteFile(path, data)
-}
-
-func osWriteFile(path string, data []byte) error {
-	return writePreferencesFile(path, data)
 }

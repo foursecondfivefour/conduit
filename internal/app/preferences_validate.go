@@ -53,15 +53,6 @@ func SanitizePreferences(p *Preferences) {
 	}
 
 	// Validate per-domain strategies: drop invalid strategy strings.
-	if p.DomainStrategies != nil {
-		filtered := make(map[string]string, len(p.DomainStrategies))
-		for domain, strategy := range p.DomainStrategies {
-			if dpi.Strategy(strategy).Valid() {
-				filtered[domain] = strategy
-			}
-		}
-		p.DomainStrategies = filtered
-	}
 
 	if p.UpdateCheckInterval != "" {
 		if d, err := time.ParseDuration(p.UpdateCheckInterval); err != nil || d < time.Hour {

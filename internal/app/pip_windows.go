@@ -4,6 +4,8 @@ package app
 
 import (
 	"github.com/wailsapp/wails/v3/pkg/application"
+
+	"github.com/foursecondfivefour/conduit/internal/config"
 )
 
 // PiPWindow toggles the main YouTube window between full and mini always-on-top mode.
@@ -15,7 +17,7 @@ type PiPWindow struct {
 }
 
 func NewPiPWindow(youtube *application.WebviewWindow) *PiPWindow {
-	return &PiPWindow{youtube: youtube, normalW: 960, normalH: 540}
+	return &PiPWindow{youtube: youtube, normalW: config.WindowWidth, normalH: config.WindowHeight}
 }
 
 func (p *PiPWindow) Toggle() {
@@ -27,7 +29,7 @@ func (p *PiPWindow) Toggle() {
 	} else {
 		p.isActive = true
 		p.youtube.SetAlwaysOnTop(true)
-		p.youtube.SetSize(320, 180)
+		p.youtube.SetSize(config.PiPWidth, config.PiPHeight)
 		p.youtube.SetTitle("YouTube (PiP)")
 	}
 }

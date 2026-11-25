@@ -41,13 +41,6 @@ func ApplyPreferences(p Preferences, settings *config.Settings) {
 	if p.WindowHeight > 0 {
 		settings.WindowHeight = p.WindowHeight
 	}
-
-	if len(p.DomainStrategies) > 0 {
-		settings.DomainStrategies = make(map[string]string, len(p.DomainStrategies))
-		for k, v := range p.DomainStrategies {
-			settings.DomainStrategies[k] = v
-		}
-	}
 }
 
 // SettingsFromPreferences builds a config.Settings snapshot from preferences.
@@ -55,16 +48,4 @@ func SettingsFromPreferences(p Preferences) config.Settings {
 	settings := config.DefaultSettings()
 	ApplyPreferences(p, &settings)
 	return settings
-}
-
-// SyncPreferencesFromSettings updates preference fields from runtime settings.
-func SyncPreferencesFromSettings(p *Preferences, settings config.Settings) {
-	if p == nil {
-		return
-	}
-	p.Strategy = settings.Strategy.String()
-	p.DoHProvider = settings.DoHProvider.String()
-	p.AllowlistPreset = settings.AllowlistPreset
-	p.CustomDomains = append([]string(nil), settings.CustomDomains...)
-	p.Language = settings.Language
 }

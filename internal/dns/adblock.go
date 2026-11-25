@@ -94,6 +94,7 @@ func (a *AdBlocker) loadFromReader(r io.Reader) error {
 	return nil
 }
 
+// Count reports how many domains are currently blocked.
 func (a *AdBlocker) Count() int {
 	a.mu.RLock()
 	defer a.mu.RUnlock()

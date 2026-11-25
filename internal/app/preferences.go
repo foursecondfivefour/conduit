@@ -18,32 +18,29 @@ const saveDebounce = 200 * time.Millisecond
 
 // Preferences stores per-user settings on disk.
 type Preferences struct {
-	OnboardingCompleted bool              `json:"onboardingCompleted"`
-	Strategy            string            `json:"strategy"`
-	DoHProvider         string            `json:"dohProvider"`
-	AllowlistPreset     string            `json:"allowlistPreset"`
-	CustomDomains       []string          `json:"customDomains"`
-	Language            string            `json:"language"`
-	WindowWidth         int               `json:"windowWidth"`
-	WindowHeight        int               `json:"windowHeight"`
-	Autostart           bool              `json:"autostart"`
-	SystemProxy         bool              `json:"systemProxy"`
-	MinimizeToTray      bool              `json:"minimizeToTray"`
-	KillSwitch          bool              `json:"killSwitch"`
-	Portable            bool              `json:"portable"`
-	AutoUpdate          bool              `json:"autoUpdate"`
-	UpdateCheckInterval string            `json:"updateCheckInterval"`
-	LastUpdateCheck     time.Time         `json:"lastUpdateCheck"`
-	SkippedVersion      string            `json:"skippedVersion"`
-	LastHealthOK        bool              `json:"lastHealthOK"`
-	LastHealthCheck     time.Time         `json:"lastHealthCheck"`
-	SponsorBlock        bool              `json:"sponsorBlock"`
-	RYD                 bool              `json:"ryd"`
-	DNSAdBlock          bool              `json:"dnsAdBlock"`
-	DNSAdBlockURL       string            `json:"dnsAdBlockURL"`
-	BackgroundAudio     bool              `json:"backgroundAudio"`
-	DomainStrategies    map[string]string `json:"domainStrategies"`
-	AutoConnect         bool              `json:"autoConnect"`
+	OnboardingCompleted bool      `json:"onboardingCompleted"`
+	Strategy            string    `json:"strategy"`
+	DoHProvider         string    `json:"dohProvider"`
+	AllowlistPreset     string    `json:"allowlistPreset"`
+	CustomDomains       []string  `json:"customDomains"`
+	Language            string    `json:"language"`
+	WindowWidth         int       `json:"windowWidth"`
+	WindowHeight        int       `json:"windowHeight"`
+	Autostart           bool      `json:"autostart"`
+	SystemProxy         bool      `json:"systemProxy"`
+	MinimizeToTray      bool      `json:"minimizeToTray"`
+	KillSwitch          bool      `json:"killSwitch"`
+	Portable            bool      `json:"portable"`
+	AutoUpdate          bool      `json:"autoUpdate"`
+	UpdateCheckInterval string    `json:"updateCheckInterval"`
+	LastUpdateCheck     time.Time `json:"lastUpdateCheck"`
+	SkippedVersion      string    `json:"skippedVersion"`
+	SponsorBlock        bool      `json:"sponsorBlock"`
+	RYD                 bool      `json:"ryd"`
+	DNSAdBlock          bool      `json:"dnsAdBlock"`
+	DNSAdBlockURL       string    `json:"dnsAdBlockURL"`
+	BackgroundAudio     bool      `json:"backgroundAudio"`
+	AutoConnect         bool      `json:"autoConnect"`
 }
 
 func DefaultPreferences(portable bool) Preferences {
@@ -162,34 +159,6 @@ func (s *preferenceStore) saveNow() error {
 		return err
 	}
 	return os.WriteFile(s.path, raw, 0o600)
-}
-
-// Export writes preferences as indented JSON to the given path.
-func (s *preferenceStore) Export(path string) error {
-	s.mu.Lock()
-	raw, err := json.MarshalIndent(s.data, "", "  ")
-	s.mu.Unlock()
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, raw, 0o644)
-}
-
-// Import reads and applies preferences from a JSON file.
-func (s *preferenceStore) Import(path string) error {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	var imported Preferences
-	if err := json.Unmarshal(raw, &imported); err != nil {
-		return err
-	}
-	SanitizePreferences(&imported)
-	s.Update(func(p *Preferences) {
-		*p = imported
-	})
-	return s.saveNow()
 }
 
 func (s *preferenceStore) Close() error {

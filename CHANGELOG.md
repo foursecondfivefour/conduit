@@ -25,7 +25,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   hardcoded `conduit-settings.json` that never existed, so import always failed)
 - Dead `AutoDNS` preference and its checkbox (nothing ever acted on it); the manual
   "Auto-select DNS" action remains
-- "Per-domain DPI" submenu — it was a single disabled item
+- "Per-domain DPI" submenu and the code behind it: `DomainStrategies` preference,
+  `dpi.DomainPolicy`, and the per-host branch in the CONNECT handler
+- Settings `Export`/`Import` methods (unreachable once the tray entries were gone)
+- Unused helpers `ControlService.RestartProxy`, `ControlService.KillSwitchEnabled`,
+  `SyncPreferencesFromSettings`, and 5 orphaned i18n keys
 
 ### Changed
 
@@ -36,6 +40,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Onboarding texts rewritten to match the reduced feature set
 - New application, tray, and installer icon set
 - README and the `docs/` references rewritten as terse, code-accurate summaries
+- Regenerated `rsrc_windows_*.syso` so the embedded executable icon matches the new artwork
+
+### Fixed
+
+- Installer had no icon; it now uses `assets/windows/icon.ico` for setup and uninstall entries
+- `scripts/build-release.bat` built the updater from `cmd/updater` (nonexistent) and swallowed the error
+- Proxy stress tests dialed the real `www.youtube.com`; they now run fully offline
+- Bug report template still suggested the removed `tcp_segmentation` strategy
 
 ## [1.3.0] - 2026-06-15
 

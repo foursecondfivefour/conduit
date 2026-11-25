@@ -2,7 +2,7 @@
 
 #define MyAppName "Conduit"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.2.1"
+  #define MyAppVersion "1.3.0"
 #endif
 #define MyAppPublisher "foursecondfivefour"
 #define MyAppURL "https://github.com/foursecondfivefour/conduit"
@@ -18,6 +18,8 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={localappdata}\Programs\Conduit
 DefaultGroupName={#MyAppName}
+SetupIconFile=..\assets\windows\icon.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 DisableProgramGroupPage=yes
 OutputDir=..\build
 OutputBaseFilename=Conduit-Setup-{#MyAppVersion}

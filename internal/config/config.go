@@ -37,14 +37,13 @@ const (
 
 // Settings holds runtime configuration shared across components.
 type Settings struct {
-	Strategy         dpi.Strategy
-	DoHProvider      dns.Provider
-	AllowlistPreset  string
-	CustomDomains    []string
-	DomainStrategies map[string]string
-	Language         string
-	WindowWidth      int
-	WindowHeight     int
+	Strategy        dpi.Strategy
+	DoHProvider     dns.Provider
+	AllowlistPreset string
+	CustomDomains   []string
+	Language        string
+	WindowWidth     int
+	WindowHeight    int
 }
 
 func DefaultSettings() Settings {
