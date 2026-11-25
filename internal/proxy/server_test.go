@@ -145,14 +145,6 @@ func TestServerKillSwitch(t *testing.T) {
 	srv.SetKillSwitch(ks)
 }
 
-func TestServerSetUpstream(t *testing.T) {
-	srv := newTestServer(t, nil)
-	defer srv.Stop(context.Background())
-
-	up := &UpstreamProxy{Host: "proxy.example.com", Port: 8080, Type: "http"}
-	srv.SetUpstream(up)
-}
-
 func TestServerRestart(t *testing.T) {
 	srv := newTestServer(t, nil)
 	ctx := context.Background()
@@ -193,21 +185,6 @@ func TestServerStartTwice(t *testing.T) {
 	}
 }
 
-func TestServerExtraPortsStart(t *testing.T) {
-	srv := newTestServer(t, nil)
-	defer srv.Stop(context.Background())
-
-	cfg := []config.ProxyPortConfig{
-		{Port: 0, TCPPort: true},
-	}
-	srv.AddExtraPorts(cfg)
-
-	extraPorts := srv.ExtraPorts()
-	if len(extraPorts) == 0 {
-		t.Fatal("expected at least one extra port")
-	}
-}
-
 func TestServerPACFile(t *testing.T) {
 	srv := newTestServer(t, nil)
 	defer srv.Stop(context.Background())
@@ -229,15 +206,12 @@ func TestServerPACFile(t *testing.T) {
 	}
 }
 
-func TestConnectWithUpstreamDial(t *testing.T) {
+func TestConnectWithCustomDial(t *testing.T) {
 	serverConn, _ := net.Pipe()
 	t.Cleanup(func() { _ = serverConn.Close() })
 
 	srv := newTestServer(t, nil)
 	defer srv.Stop(context.Background())
-
-	up := &UpstreamProxy{Host: "localhost", Port: 3128, Type: "http"}
-	srv.SetUpstream(up)
 
 	srv.dialFunc = func(ctx context.Context, network, address string) (net.Conn, error) {
 		return serverConn, nil
@@ -249,7 +223,7 @@ func TestConnectWithUpstreamDial(t *testing.T) {
 	go srv.serve(rec, req)
 
 	if !waitBool(t, func() bool { return rec.Hijacked() }, 2*time.Second) {
-		t.Fatal("expected hijacked connection with upstream")
+		t.Fatal("expected hijacked connection with custom dialer")
 	}
 
 	reader := bufio.NewReader(rec.ClientConn())
@@ -286,9 +260,9 @@ func newHijackRecorder() *hijackRecorder {
 	return &hijackRecorder{}
 }
 
-func (h *hijackRecorder) Header() http.Header         { return http.Header{} }
-func (h *hijackRecorder) Write([]byte) (int, error)   { return 0, http.ErrNotSupported }
-func (h *hijackRecorder) WriteHeader(int)             {}
+func (h *hijackRecorder) Header() http.Header       { return http.Header{} }
+func (h *hijackRecorder) Write([]byte) (int, error) { return 0, http.ErrNotSupported }
+func (h *hijackRecorder) WriteHeader(int)           {}
 
 func (h *hijackRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	client, server := net.Pipe()

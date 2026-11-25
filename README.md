@@ -5,8 +5,8 @@
 <h1 align="center">Conduit</h1>
 
 <p align="center">
-  Windows desktop utility: local HTTP CONNECT proxy with TLS fragmentation, SOCKS5/MASQUE proxies, AI DPI strategy selector, DNS-over-HTTPS, and an embedded YouTube viewer (Wails v3 / WebView2).<br>
-  <strong>33 languages</strong> · Full system-tray control · Reproducible builds
+  Windows desktop utility: local HTTP CONNECT proxy with TLS fragmentation, DNS-over-HTTPS, and an embedded YouTube viewer (Wails v3 / WebView2).<br>
+  <strong>RU + EN</strong> · Full system-tray control · Reproducible builds
 </p>
 
 <p align="center">
@@ -29,19 +29,12 @@ Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webvi
 
 ## Features (v1.3.0)
 
-### Proxy engines
+### Proxy engine
 - **HTTP CONNECT** — local proxy with TLS ClientHello fragmentation (DPI evasion)
-- **SOCKS5** — RFC 1928 proxy with configurable port
-- **MASQUE** — HTTP/3 (QUIC) UDP proxy
-- **Proxy chaining** — upstream HTTP/SOCKS5 proxy support
-- **Split tunneling** — bypass proxy on alternate port
 - **PAC file** — URL generation for browser integration
-- **TUN mode** — full system routing via Windows Firewall
 
 ### DPI evasion
-- 6 strategies: none, TCP segmentation (1/2/8 bytes), TLS record fragmentation (5/2 bytes)
-- **AI strategy selector** — automatically probes and caches the best strategy per host
-- **ECH (Encrypted Client Hello)** support
+- 3 strategies: TLS record fragmentation (5 bytes), TLS record fragmentation (2 bytes), none
 - Per-domain strategy configuration
 
 ### DNS
@@ -59,14 +52,13 @@ Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webvi
 - Auto-connect with YouTube preload
 
 ### Internationalization
-- **33 languages**: RU, EN, DE, FR, ES, TR, FA, UK, BE, KK, UZ, HY, AZ, KA, RO, KY, TG, TK, TT, BA, CE, CV, SAH, BUA, OS, AV, MHR, UDM, KV, MYV, KBD, TYV, XAL
+- **2 languages**: RU, EN
 - Full UI translation: tray menu, onboarding, notifications
 
 ### Traffic management
 - Traffic statistics window (real-time byte counting)
 - Speed test tool
 - Auto-connect on startup
-- Multi-port proxy configuration
 - Export/import settings (`preferences.json`)
 
 ### Windows integration
@@ -144,19 +136,12 @@ Open from tray: **Open log** / **Открыть лог**
 curl.exe -x http://127.0.0.1:31284 https://www.youtube.com -I
 ```
 
-SOCKS5:
-```powershell
-curl.exe --socks5 127.0.0.1:1080 https://www.youtube.com -I
-```
-
 ## Architecture
 
 ```
-WebView2 ──┬── CONNECT proxy ── DoH DNS ── TCP:443
-           ├── SOCKS5 proxy ──── proxy chain (upstream)
-           └── MASQUE (QUIC) ── split tunnel
+WebView2 ──── CONNECT proxy ──── DoH DNS ──── TCP:443
                     │
-          TLS ClientHello fragmentation (AI-selected)
+          TLS ClientHello fragmentation
 ```
 
 ## Tests
@@ -174,7 +159,6 @@ See [docs/DEBUGGING.md](docs/DEBUGGING.md) for pprof, soak tests, and debug buil
 - **System proxy** lets other local apps use Conduit — enable only if you understand the scope.
 - Default allowlist is **YouTube only**; avoid broad custom suffixes like `com`.
 - Auto-update requires a valid **SHA256** sidecar from GitHub releases.
-- SOCKS5/MASQUE proxies bind to `127.0.0.1` by default.
 
 Details: [docs/SECURITY.md](docs/SECURITY.md).
 

@@ -20,7 +20,7 @@ func SanitizePreferences(p *Preferences) {
 
 	st := dpi.Strategy(p.Strategy)
 	if !st.Valid() {
-		p.Strategy = string(dpi.StrategyTCPSegmentation)
+		p.Strategy = string(dpi.DefaultStrategy)
 	}
 
 	provider := dns.Provider(p.DoHProvider)
@@ -40,7 +40,7 @@ func SanitizePreferences(p *Preferences) {
 
 	lang := strings.ToLower(strings.TrimSpace(p.Language))
 	switch lang {
-	case "en", "ru", "de", "fr", "es", "tr", "fa", "tt", "ba", "ce", "cv", "sah", "bua", "os", "av", "mhr", "udm", "kv", "myv", "kbd", "tyv", "xal", "uk", "be", "kk", "uz", "hy", "az", "ka", "ro", "ky", "tg", "tk":
+	case "en", "ru":
 	default:
 		p.Language = "ru"
 	}
@@ -69,13 +69,5 @@ func SanitizePreferences(p *Preferences) {
 		}
 	} else {
 		p.UpdateCheckInterval = config.DefaultUpdateCheckInterval.String()
-	}
-
-	// Validate port values: must be between 1 and 65535.
-	if p.SOCKS5Port <= 0 || p.SOCKS5Port > 65535 {
-		p.SOCKS5Port = config.DefaultSOCKS5Port
-	}
-	if p.UpstreamPort <= 0 || p.UpstreamPort > 65535 {
-		p.UpstreamPort = 0
 	}
 }

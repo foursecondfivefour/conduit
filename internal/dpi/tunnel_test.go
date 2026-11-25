@@ -30,7 +30,7 @@ func TestRelayFragmentsFirstClientHello(t *testing.T) {
 		_ = client.Close()
 	}()
 
-	writer := NewFragmentWriter(StrategyTCPSegmentation)
+	writer := NewFragmentWriter(StrategyTLSRecordFrag)
 	go func() { _, _, _ = Relay(proxySide, upstreamClient, writer) }()
 
 	select {
@@ -43,7 +43,7 @@ func TestRelayFragmentsFirstClientHello(t *testing.T) {
 	}
 }
 
-func TestRelayWithECHStrategy(t *testing.T) {
+func TestRelayWithTLSFrag2Strategy(t *testing.T) {
 	client, proxySide := net.Pipe()
 	upstreamClient, upstreamServer := net.Pipe()
 	t.Cleanup(func() {
@@ -66,16 +66,16 @@ func TestRelayWithECHStrategy(t *testing.T) {
 		_ = client.Close()
 	}()
 
-	writer := NewFragmentWriter(StrategyECH)
+	writer := NewFragmentWriter(StrategyTLSRecordFrag2)
 	go func() { _, _, _ = Relay(proxySide, upstreamClient, writer) }()
 
 	select {
 	case got := <-received:
 		if len(got) == 0 {
-			t.Fatal("upstream received no data for ECH")
+			t.Fatal("upstream received no data for TLS frag 2")
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("timeout waiting for upstream data with ECH")
+		t.Fatal("timeout waiting for upstream data with TLS frag 2")
 	}
 }
 
@@ -102,7 +102,7 @@ func TestRelayNonTLSData(t *testing.T) {
 		_ = client.Close()
 	}()
 
-	writer := NewFragmentWriter(StrategyTCPSegmentation)
+	writer := NewFragmentWriter(StrategyTLSRecordFrag)
 	go func() { _, _, _ = Relay(proxySide, upstreamClient, writer) }()
 
 	select {

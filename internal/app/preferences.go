@@ -18,51 +18,39 @@ const saveDebounce = 200 * time.Millisecond
 
 // Preferences stores per-user settings on disk.
 type Preferences struct {
-	OnboardingCompleted bool     `json:"onboardingCompleted"`
-	Strategy            string   `json:"strategy"`
-	DoHProvider         string   `json:"dohProvider"`
-	AllowlistPreset     string   `json:"allowlistPreset"`
-	CustomDomains       []string `json:"customDomains"`
-	Language            string   `json:"language"`
-	WindowWidth         int      `json:"windowWidth"`
-	WindowHeight        int      `json:"windowHeight"`
-	Autostart           bool     `json:"autostart"`
-	SystemProxy         bool     `json:"systemProxy"`
-	MinimizeToTray      bool     `json:"minimizeToTray"`
-	KillSwitch          bool     `json:"killSwitch"`
-	Portable            bool     `json:"portable"`
-	AutoUpdate          bool     `json:"autoUpdate"`
-	UpdateCheckInterval string   `json:"updateCheckInterval"`
-	LastUpdateCheck     time.Time `json:"lastUpdateCheck"`
-	SkippedVersion      string   `json:"skippedVersion"`
-	LastHealthOK        bool     `json:"lastHealthOK"`
-	LastHealthCheck     time.Time `json:"lastHealthCheck"`
-	SponsorBlock        bool     `json:"sponsorBlock"`
-	RYD                 bool     `json:"ryd"`
-	DNSAdBlock          bool     `json:"dnsAdBlock"`
-	DNSAdBlockURL       string   `json:"dnsAdBlockURL"`
-	BackgroundAudio     bool     `json:"backgroundAudio"`
-	SOCKS5             bool                        `json:"socks5"`
-	SOCKS5Port         int                         `json:"socks5Port"`
-	DomainStrategies   map[string]string           `json:"domainStrategies"`
-	ProxyPorts         []config.ProxyPortConfig    `json:"proxyPorts"`
-	SplitTunnel        bool                        `json:"splitTunnel"`
-	UpstreamType       string                      `json:"upstreamType"`
-	UpstreamHost       string                      `json:"upstreamHost"`
-	UpstreamPort       int                         `json:"upstreamPort"`
-	UpstreamUser       string                      `json:"upstreamUser"`
-	UpstreamPassword   string                      `json:"upstreamPassword"`
-	AutoDNS            bool                        `json:"autoDNS"`
-	AutoDNSLastCheck   time.Time                   `json:"autoDNSLastCheck"`
-	AutoConnect        bool                        `json:"autoConnect"`
-	TUNMode            bool                        `json:"tunMode"`
-	MASQUE             bool                        `json:"masque"`
-	AIDPI              bool                        `json:"aiDPI"`
+	OnboardingCompleted bool              `json:"onboardingCompleted"`
+	Strategy            string            `json:"strategy"`
+	DoHProvider         string            `json:"dohProvider"`
+	AllowlistPreset     string            `json:"allowlistPreset"`
+	CustomDomains       []string          `json:"customDomains"`
+	Language            string            `json:"language"`
+	WindowWidth         int               `json:"windowWidth"`
+	WindowHeight        int               `json:"windowHeight"`
+	Autostart           bool              `json:"autostart"`
+	SystemProxy         bool              `json:"systemProxy"`
+	MinimizeToTray      bool              `json:"minimizeToTray"`
+	KillSwitch          bool              `json:"killSwitch"`
+	Portable            bool              `json:"portable"`
+	AutoUpdate          bool              `json:"autoUpdate"`
+	UpdateCheckInterval string            `json:"updateCheckInterval"`
+	LastUpdateCheck     time.Time         `json:"lastUpdateCheck"`
+	SkippedVersion      string            `json:"skippedVersion"`
+	LastHealthOK        bool              `json:"lastHealthOK"`
+	LastHealthCheck     time.Time         `json:"lastHealthCheck"`
+	SponsorBlock        bool              `json:"sponsorBlock"`
+	RYD                 bool              `json:"ryd"`
+	DNSAdBlock          bool              `json:"dnsAdBlock"`
+	DNSAdBlockURL       string            `json:"dnsAdBlockURL"`
+	BackgroundAudio     bool              `json:"backgroundAudio"`
+	DomainStrategies    map[string]string `json:"domainStrategies"`
+	AutoDNS             bool              `json:"autoDNS"`
+	AutoDNSLastCheck    time.Time         `json:"autoDNSLastCheck"`
+	AutoConnect         bool              `json:"autoConnect"`
 }
 
 func DefaultPreferences(portable bool) Preferences {
 	return Preferences{
-		Strategy:            string(dpi.StrategyTCPSegmentation),
+		Strategy:            string(dpi.DefaultStrategy),
 		DoHProvider:         string(dns.ProviderCloudflare),
 		AllowlistPreset:     proxy.PresetYouTube.String(),
 		Language:            "ru",

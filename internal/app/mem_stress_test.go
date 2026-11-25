@@ -54,7 +54,7 @@ func TestMemProxyConnectBurstNoGoroutineLeak(t *testing.T) {
 
 func TestMemSettingsToggleHeapStable(t *testing.T) {
 	store := NewSettingsStore(Preferences{
-		Strategy:        string(dpi.StrategyTCPSegmentation),
+		Strategy:        string(dpi.StrategyTLSRecordFrag),
 		AllowlistPreset: string(proxy.PresetYouTube),
 	})
 	resolver := dns.NewResolver(dns.ProviderCloudflare)

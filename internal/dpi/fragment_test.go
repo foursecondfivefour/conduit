@@ -1,8 +1,6 @@
 package dpi
 
 import (
-	"context"
-	"net"
 	"testing"
 )
 
@@ -33,12 +31,8 @@ func TestStrategyString(t *testing.T) {
 		want string
 	}{
 		{StrategyNone, "none"},
-		{StrategyTCPSegmentation, "tcp_segmentation"},
-		{StrategyTCPSegmentation1, "tcp_segmentation_1"},
-		{StrategyTCPSegmentation8, "tcp_segmentation_8"},
 		{StrategyTLSRecordFrag, "tls_record_frag"},
 		{StrategyTLSRecordFrag2, "tls_record_frag_2"},
-		{StrategyECH, "ech"},
 	}
 	for _, tt := range tests {
 		if got := tt.s.String(); got != tt.want {
@@ -53,12 +47,8 @@ func TestStrategyShortLabel(t *testing.T) {
 		want string
 	}{
 		{StrategyNone, "none"},
-		{StrategyTCPSegmentation, "tcp_seg"},
-		{StrategyTCPSegmentation1, "tcp_1"},
-		{StrategyTCPSegmentation8, "tcp_8"},
 		{StrategyTLSRecordFrag, "tls_frag"},
 		{StrategyTLSRecordFrag2, "tls_2"},
-		{StrategyECH, "ech"},
 	}
 	for _, tt := range tests {
 		if got := tt.s.ShortLabel(); got != tt.want {
@@ -67,134 +57,36 @@ func TestStrategyShortLabel(t *testing.T) {
 	}
 }
 
-func TestAllStrategiesIncludesECH(t *testing.T) {
-	all := AllStrategies()
-	found := false
-	for _, s := range all {
-		if s == StrategyECH {
-			found = true
-			break
+func TestAllStrategiesOnlyTLSFragmentation(t *testing.T) {
+	for _, s := range AllStrategies() {
+		switch s {
+		case StrategyNone, StrategyTLSRecordFrag, StrategyTLSRecordFrag2:
+		default:
+			t.Fatalf("unexpected strategy in AllStrategies: %s", s)
 		}
-	}
-	if !found {
-		t.Fatal("AllStrategies should include StrategyECH")
 	}
 }
 
 func TestNewFragmentWriterDefaults(t *testing.T) {
 	w := NewFragmentWriter(Strategy("bad"))
-	if w.strategy != StrategyTCPSegmentation {
+	if w.strategy != DefaultStrategy {
 		t.Fatalf("got %s", w.strategy)
 	}
 }
 
-func TestAIStrategySelectorGetDefault(t *testing.T) {
-	selector := NewAIStrategySelector(StrategyTCPSegmentation8)
-	if got := selector.GetStrategyForHost("example.com"); got != StrategyTCPSegmentation8 {
-		t.Fatalf("default strategy = %s, want %s", got, StrategyTCPSegmentation8)
-	}
-}
-
-func TestAIStrategySelectorRecordAndGet(t *testing.T) {
-	selector := NewAIStrategySelector(StrategyNone)
-	selector.RecordStrategy("www.youtube.com", StrategyTCPSegmentation8)
-	selector.RecordStrategy("www.example.com", StrategyTLSRecordFrag)
-
-	if got := selector.GetStrategyForHost("www.youtube.com"); got != StrategyTCPSegmentation8 {
-		t.Fatalf("youtube strategy = %s, want %s", got, StrategyTCPSegmentation8)
-	}
-	if got := selector.GetStrategyForHost("www.example.com"); got != StrategyTLSRecordFrag {
-		t.Fatalf("example strategy = %s, want %s", got, StrategyTLSRecordFrag)
-	}
-	if got := selector.GetStrategyForHost("unknown.com"); got != StrategyNone {
-		t.Fatalf("unknown host = %s, want %s", got, StrategyNone)
-	}
-}
-
-func TestAIStrategySelectorOverwrite(t *testing.T) {
-	selector := NewAIStrategySelector(StrategyNone)
-	selector.RecordStrategy("test.com", StrategyTCPSegmentation)
-	selector.RecordStrategy("test.com", StrategyTLSRecordFrag)
-
-	if got := selector.GetStrategyForHost("test.com"); got != StrategyTLSRecordFrag {
-		t.Fatalf("overwritten strategy = %s, want %s", got, StrategyTLSRecordFrag)
-	}
-}
-
-func TestAIStrategySelectorProbeHost(t *testing.T) {
-	selector := NewAIStrategySelector(StrategyTCPSegmentation)
-
-	dial := func(ctx context.Context, network, address string) (net.Conn, error) {
-		client, server := net.Pipe()
-		_ = server.Close()
-		return client, nil
-	}
-
-	strategy, err := selector.ProbeHost(context.Background(), "test.com", 443, dial)
-	if err != nil || strategy.Valid() == false {
-		t.Fatalf("ProbeHost failed: err=%v strategy=%s", err, strategy)
-	}
-	if strategy == StrategyNone {
-		t.Fatal("probe should not return StrategyNone")
-	}
-	cached := selector.GetStrategyForHost("test.com")
-	if cached != strategy {
-		t.Fatalf("cached = %s, want %s", cached, strategy)
-	}
-}
-
-func TestAIStrategySelectorProbeAllFail(t *testing.T) {
-	selector := NewAIStrategySelector(StrategyTCPSegmentation8)
-
-	dial := func(ctx context.Context, network, address string) (net.Conn, error) {
-		return nil, net.ErrClosed
-	}
-
-	strategy, err := selector.ProbeHost(context.Background(), "bad.com", 443, dial)
-	if err == nil {
-		t.Fatal("expected error when all probes fail")
-	}
-	if strategy != StrategyTCPSegmentation8 {
-		t.Fatalf("fallback strategy = %s, want %s", strategy, StrategyTCPSegmentation8)
-	}
-}
-
-func TestECHConn(t *testing.T) {
-	client, server := net.Pipe()
-	t.Cleanup(func() {
-		_ = client.Close()
-		_ = server.Close()
-	})
-
-	go func() {
-		tlsConn, err := ECHConn(client, "example.com")
-		if err != nil {
-			t.Errorf("ECHConn: %v", err)
-			return
-		}
-		_ = tlsConn.Close()
-	}()
-
-	buf := make([]byte, 1024)
-	_, err := server.Read(buf)
-	if err == nil {
-		t.Log("ECHConn initiated TLS handshake")
-	}
-}
-
 func TestDomainPolicyDefault(t *testing.T) {
-	policy := NewDomainPolicy(StrategyTCPSegmentation8)
-	if got := policy.Get("any-host.com"); got != StrategyTCPSegmentation8 {
-		t.Fatalf("default = %s, want %s", got, StrategyTCPSegmentation8)
+	policy := NewDomainPolicy(StrategyTLSRecordFrag2)
+	if got := policy.Get("any-host.com"); got != StrategyTLSRecordFrag2 {
+		t.Fatalf("default = %s, want %s", got, StrategyTLSRecordFrag2)
 	}
 }
 
 func TestDomainPolicyExactMatch(t *testing.T) {
 	policy := NewDomainPolicy(StrategyNone)
-	policy.Set("www.youtube.com", StrategyTCPSegmentation8)
+	policy.Set("www.youtube.com", StrategyTLSRecordFrag2)
 
-	if got := policy.Get("www.youtube.com"); got != StrategyTCPSegmentation8 {
-		t.Fatalf("exact match = %s, want %s", got, StrategyTCPSegmentation8)
+	if got := policy.Get("www.youtube.com"); got != StrategyTLSRecordFrag2 {
+		t.Fatalf("exact match = %s, want %s", got, StrategyTLSRecordFrag2)
 	}
 }
 
@@ -212,23 +104,23 @@ func TestDomainPolicyParentDomain(t *testing.T) {
 
 func TestDomainPolicyPriority(t *testing.T) {
 	policy := NewDomainPolicy(StrategyNone)
-	policy.Set("youtube.com", StrategyTCPSegmentation)
+	policy.Set("youtube.com", StrategyTLSRecordFrag)
 	policy.Set("www.youtube.com", StrategyTLSRecordFrag)
 
 	if got := policy.Get("www.youtube.com"); got != StrategyTLSRecordFrag {
 		t.Fatalf("specific = %s, want %s", got, StrategyTLSRecordFrag)
 	}
-	if got := policy.Get("music.youtube.com"); got != StrategyTCPSegmentation {
-		t.Fatalf("parent = %s, want %s", got, StrategyTCPSegmentation)
+	if got := policy.Get("music.youtube.com"); got != StrategyTLSRecordFrag {
+		t.Fatalf("parent = %s, want %s", got, StrategyTLSRecordFrag)
 	}
 }
 
 func TestDomainPolicySetDefault(t *testing.T) {
 	policy := NewDomainPolicy(StrategyNone)
-	policy.SetDefault(StrategyTCPSegmentation8)
+	policy.SetDefault(StrategyTLSRecordFrag2)
 
-	if got := policy.Get("test.com"); got != StrategyTCPSegmentation8 {
-		t.Fatalf("new default = %s, want %s", got, StrategyTCPSegmentation8)
+	if got := policy.Get("test.com"); got != StrategyTLSRecordFrag2 {
+		t.Fatalf("new default = %s, want %s", got, StrategyTLSRecordFrag2)
 	}
 }
 

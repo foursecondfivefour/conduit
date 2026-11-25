@@ -49,7 +49,7 @@ func TestPreferencesRoundTrip(t *testing.T) {
 
 	want := DefaultPreferences(true)
 	want.OnboardingCompleted = true
-	want.Strategy = string(dpi.StrategyTCPSegmentation8)
+	want.Strategy = string(dpi.StrategyTLSRecordFrag2)
 	want.DoHProvider = string(dns.ProviderQuad9)
 	want.AllowlistPreset = string(proxy.PresetYouTube)
 	want.CustomDomains = []string{"example.com"}
@@ -111,22 +111,10 @@ func TestPreferencesNewFieldsRoundTrip(t *testing.T) {
 	want.DNSAdBlock = true
 	want.DNSAdBlockURL = config.DefaultAdBlockURL
 	want.BackgroundAudio = true
-	want.SOCKS5 = true
-	want.SOCKS5Port = config.DefaultSOCKS5Port
-	want.SplitTunnel = true
-	want.UpstreamType = "http"
-	want.UpstreamHost = "proxy.local"
-	want.UpstreamPort = 8080
 	want.AutoDNS = true
 	want.AutoConnect = true
-	want.TUNMode = true
-	want.MASQUE = true
-	want.AIDPI = true
 	want.DomainStrategies = map[string]string{
 		"www.youtube.com": string(dpi.StrategyTLSRecordFrag),
-	}
-	want.ProxyPorts = []config.ProxyPortConfig{
-		{Port: 31286, TCPPort: true, Strategy: "tcp_segmentation_8"},
 	}
 
 	raw, err := json.MarshalIndent(want, "", "  ")
@@ -159,38 +147,14 @@ func TestPreferencesNewFieldsRoundTrip(t *testing.T) {
 	if !got.BackgroundAudio {
 		t.Fatal("BackgroundAudio should be true")
 	}
-	if !got.SOCKS5 {
-		t.Fatal("SOCKS5 should be true")
-	}
-	if got.SOCKS5Port != config.DefaultSOCKS5Port {
-		t.Fatalf("SOCKS5Port = %d", got.SOCKS5Port)
-	}
-	if !got.SplitTunnel {
-		t.Fatal("SplitTunnel should be true")
-	}
-	if got.UpstreamType != "http" || got.UpstreamHost != "proxy.local" || got.UpstreamPort != 8080 {
-		t.Fatalf("upstream = %s/%s/%d", got.UpstreamType, got.UpstreamHost, got.UpstreamPort)
-	}
 	if !got.AutoDNS {
 		t.Fatal("AutoDNS should be true")
 	}
 	if !got.AutoConnect {
 		t.Fatal("AutoConnect should be true")
 	}
-	if !got.TUNMode {
-		t.Fatal("TUNMode should be true")
-	}
-	if !got.MASQUE {
-		t.Fatal("MASQUE should be true")
-	}
-	if !got.AIDPI {
-		t.Fatal("AIDPI should be true")
-	}
 	if len(got.DomainStrategies) != 1 {
 		t.Fatalf("DomainStrategies len = %d, want 1", len(got.DomainStrategies))
-	}
-	if len(got.ProxyPorts) != 1 {
-		t.Fatalf("ProxyPorts len = %d, want 1", len(got.ProxyPorts))
 	}
 }
 
@@ -206,7 +170,7 @@ func TestPreferencesExportImport(t *testing.T) {
 	store.Update(func(p *Preferences) {
 		p.KillSwitch = true
 		p.Language = "en"
-		p.Strategy = string(dpi.StrategyECH)
+		p.Strategy = string(dpi.StrategyTLSRecordFrag2)
 	})
 	time.Sleep(300 * time.Millisecond)
 
@@ -229,7 +193,7 @@ func TestPreferencesExportImport(t *testing.T) {
 	if got.Language != "en" {
 		t.Fatalf("imported language = %s", got.Language)
 	}
-	if got.Strategy != string(dpi.StrategyECH) {
+	if got.Strategy != string(dpi.StrategyTLSRecordFrag2) {
 		t.Fatalf("imported strategy = %s", got.Strategy)
 	}
 	if !got.KillSwitch {
@@ -239,7 +203,7 @@ func TestPreferencesExportImport(t *testing.T) {
 
 func TestPreferencesDefaultFields(t *testing.T) {
 	p := DefaultPreferences(true)
-	if p.Strategy != string(dpi.StrategyTCPSegmentation) {
+	if p.Strategy != string(dpi.StrategyTLSRecordFrag) {
 		t.Errorf("Strategy = %s", p.Strategy)
 	}
 	if p.DoHProvider != string(dns.ProviderCloudflare) {

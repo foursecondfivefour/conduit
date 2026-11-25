@@ -4,20 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
-	"net"
-	"net/http"
-	"os"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
 	"github.com/foursecondfivefour/conduit/internal/dns"
-	"github.com/foursecondfivefour/conduit/internal/dpi"
 	"github.com/foursecondfivefour/conduit/internal/i18n"
 	"github.com/foursecondfivefour/conduit/internal/proxy"
-	"github.com/foursecondfivefour/conduit/internal/tun"
 	"github.com/foursecondfivefour/conduit/internal/update"
 	"github.com/foursecondfivefour/conduit/internal/winproxy"
 	yt "github.com/foursecondfivefour/conduit/internal/youtube"
@@ -25,15 +19,15 @@ import (
 
 // RunInput bundles dependencies for the GUI application loop.
 type RunInput struct {
-	Ctx        context.Context
-	Paths      RuntimePaths
-	Prefs      *preferenceStore
-	Proxy      *proxy.Server
-	Resolver   *dns.Resolver
-	Settings   *settingsStore
-	WinProxy   *winproxy.Manager
-	Updater    *update.Service
-	UI         UIOptions
+	Ctx      context.Context
+	Paths    RuntimePaths
+	Prefs    *preferenceStore
+	Proxy    *proxy.Server
+	Resolver *dns.Resolver
+	Settings *settingsStore
+	WinProxy *winproxy.Manager
+	Updater  *update.Service
+	UI       UIOptions
 }
 
 // Run starts the WebView window, system tray, and startup flow.
@@ -64,7 +58,7 @@ func Run(in RunInput) error {
 		Name:        "Conduit",
 		Description: "Local CONNECT proxy with TLS fragmentation and YouTube viewer",
 		Icon:        appIcon,
-		Windows: windowsWebViewOptions(in.Paths.WebViewDataDir(), proxyURL, in.UI.Debug),
+		Windows:     windowsWebViewOptions(in.Paths.WebViewDataDir(), proxyURL, in.UI.Debug),
 	})
 
 	lang := i18n.ParseLang(p.Language)
@@ -109,99 +103,6 @@ func Run(in RunInput) error {
 	stats := proxy.NewTrafficStats()
 	in.Proxy.SetStats(stats)
 
-	// Create SOCKS5 server
-	socks5 := proxy.NewSOCKS5Server(in.Resolver.DialContext, in.Settings.Snapshot)
-	socks5Port := config.DefaultSOCKS5Port
-	if p.SOCKS5Port > 0 {
-		socks5Port = p.SOCKS5Port
-	} else if p.SOCKS5 {
-		socks5Port = port + config.SOCKS5PortOffset
-	}
-	if p.SOCKS5 {
-		if err := socks5.Start(context.Background(), config.ListenHost, socks5Port); err != nil {
-			slog.Warn("SOCKS5 start failed", "err", err)
-		}
-	}
-
-	// Start extra proxy ports from preferences
-	if len(p.ProxyPorts) > 0 {
-		in.Proxy.AddExtraPorts(p.ProxyPorts)
-	}
-
-	// Feature 4.2: Upstream Proxy Chaining
-	if p.UpstreamHost != "" && p.UpstreamPort > 0 {
-		upstream := &proxy.UpstreamProxy{
-			Type:     p.UpstreamType,
-			Host:     p.UpstreamHost,
-			Port:     p.UpstreamPort,
-			User:     p.UpstreamUser,
-			Password: p.UpstreamPassword,
-		}
-		in.Proxy.SetUpstream(upstream)
-	}
-
-	// Feature 4.1: Split Tunneling (bypass proxy on port+2)
-	var splitTunnelSrv *http.Server
-	splitTunnelPort := 0
-	if p.SplitTunnel {
-		splitTunnelPort = port + config.SplitTunnelPortOffset
-		splitAddr := net.JoinHostPort(config.ListenHost, fmt.Sprintf("%d", splitTunnelPort))
-		splitTunnelListener, listenErr := net.Listen("tcp", splitAddr)
-	if listenErr != nil {
-		slog.Warn("split tunnel listen failed", "err", listenErr, "addr", splitAddr)
-	} else if splitTunnelListener != nil {
-			splitTunnelPort = splitTunnelListener.Addr().(*net.TCPAddr).Port
-			splitTunnelSrv = &http.Server{
-				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.Method != http.MethodConnect {
-						http.Error(w, "CONNECT required", http.StatusMethodNotAllowed)
-						return
-					}
-					hijacker, ok := w.(http.Hijacker)
-					if !ok {
-						http.Error(w, "hijack not supported", http.StatusInternalServerError)
-						return
-					}
-					upConn, err := proxy.DirectDialer(r.Context(), "tcp", r.Host)
-					if err != nil {
-						http.Error(w, "upstream dial failed", http.StatusBadGateway)
-						return
-					}
-					client, _, err := hijacker.Hijack()
-					if err != nil {
-						upConn.Close()
-						return
-					}
-					defer client.Close()
-					if _, err := io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
-						slog.Warn("split tunnel: write CONNECT response failed", "err", err)
-						upConn.Close()
-						return
-					}
-					go func() {
-						defer upConn.Close()
-						defer client.Close()
-						if _, err := io.Copy(upConn, client); err != nil {
-							slog.Debug("split tunnel: client->upstream copy done", "err", err)
-						}
-					}()
-					if _, err := io.Copy(client, upConn); err != nil {
-						slog.Debug("split tunnel: upstream->client copy done", "err", err)
-					}
-				}),
-				ReadHeaderTimeout: config.ReadHeaderTimeout,
-				ReadTimeout:       config.ReadHeaderTimeout,
-				WriteTimeout:      config.IdleTimeout,
-				IdleTimeout:       config.IdleTimeout,
-			}
-			go func() {
-				if err := splitTunnelSrv.Serve(splitTunnelListener); err != nil && err != http.ErrServerClosed {
-					slog.Warn("split tunnel serve error", "err", err)
-				}
-			}()
-		}
-	}
-
 	// Feature 4.6: Auto-Connect on startup
 	if p.AutoConnect {
 		if err := in.WinProxy.Enable(config.ListenHost, port); err != nil {
@@ -212,32 +113,6 @@ func Run(in RunInput) error {
 				slog.Warn("auto-connect kill switch enable failed", "err", err)
 			}
 		}
-	}
-
-	// Feature 4.7: TUN Mode
-	tunMode := tun.NewTUNMode()
-	if p.TUNMode {
-		exePath, _ := os.Executable()
-		if exePath != "" {
-			if err := tunMode.Enable(exePath); err != nil {
-				slog.Warn("tun mode enable failed", "err", err)
-			}
-		}
-	}
-
-	// Feature 5.2: MASQUE (HTTP/3) Proxy
-	masqueServer := proxy.NewMASQUEServer()
-	if p.MASQUE {
-		if err := masqueServer.Start(context.Background(), config.ListenHost, config.DefaultMASQUEPort); err != nil {
-			slog.Warn("MASQUE start failed", "err", err)
-		}
-	}
-
-	// Feature 5.3: AI DPI Strategy Selector
-	var aiSelector *dpi.AIStrategySelector
-	if p.AIDPI {
-		aiSelector = dpi.NewAIStrategySelector(in.Settings.Snapshot().Strategy)
-		in.Proxy.SetAISelector(aiSelector)
 	}
 
 	// Create DNS ad blocker and wire it to the resolver
@@ -313,23 +188,19 @@ func Run(in RunInput) error {
 	}
 
 	deps := trayDeps{
-		app:          app,
-		youtube:      youtube,
-		proxy:        in.Proxy,
-		control:      control,
-		prefs:        in.Prefs,
-		flow:         flow,
-		updater:      in.Updater,
-		winProxy:     in.WinProxy,
-		paths:        in.Paths,
-		ui:           in.UI,
-		pip:          pip,
-		adBlocker:    adBlocker,
-		socks5:       socks5,
-		stats:        stats,
-		tunMode:      tunMode,
-		masque:       masqueServer,
-		splitTunnelPort: splitTunnelPort,
+		app:       app,
+		youtube:   youtube,
+		proxy:     in.Proxy,
+		control:   control,
+		prefs:     in.Prefs,
+		flow:      flow,
+		updater:   in.Updater,
+		winProxy:  in.WinProxy,
+		paths:     in.Paths,
+		ui:        in.UI,
+		pip:       pip,
+		adBlocker: adBlocker,
+		stats:     stats,
 	}
 	tray := setupTray(deps)
 	setupHotkeyToggle(youtube, tray.stopCh)

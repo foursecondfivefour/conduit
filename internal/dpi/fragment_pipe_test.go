@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestWriteTCPSegmentsSplitsPayload(t *testing.T) {
+func TestWriteTLSRecordFragmentsSplitsPayload(t *testing.T) {
 	client, server := net.Pipe()
 	t.Cleanup(func() {
 		_ = client.Close()
@@ -20,8 +20,8 @@ func TestWriteTCPSegmentsSplitsPayload(t *testing.T) {
 		readDone <- raw
 	}()
 
-	if err := writeTCPSegments(client, data, defaultTCPSegmentSize, defaultTCPSegmentDelay); err != nil {
-		t.Fatalf("writeTCPSegments: %v", err)
+	if err := writeTLSRecordFragments(client, data, defaultTLSRecordPayload, defaultTLSRecordDelay); err != nil {
+		t.Fatalf("writeTLSRecordFragments: %v", err)
 	}
 	_ = client.Close()
 
@@ -67,7 +67,7 @@ func TestFragmentWriterWriteFirstTCP(t *testing.T) {
 		_ = server.Close()
 	})
 
-	writer := NewFragmentWriter(StrategyTCPSegmentation)
+	writer := NewFragmentWriter(StrategyTLSRecordFrag)
 	payload := []byte{0x16, 0x03, 0x01, 0x00, 0x03, 0xaa, 0xbb, 0xcc}
 
 	readDone := make(chan struct{})
@@ -83,14 +83,14 @@ func TestFragmentWriterWriteFirstTCP(t *testing.T) {
 	<-readDone
 }
 
-func TestFragmentWriterWriteFirstECH(t *testing.T) {
+func TestFragmentWriterWriteFirstTLSFragChunked(t *testing.T) {
 	client, server := net.Pipe()
 	t.Cleanup(func() {
 		_ = client.Close()
 		_ = server.Close()
 	})
 
-	writer := NewFragmentWriter(StrategyECH)
+	writer := NewFragmentWriter(StrategyTLSRecordFrag2)
 	payload := []byte{0x16, 0x03, 0x01, 0x00, 0x0a, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a}
 
 	readDone := make(chan struct{})
@@ -100,7 +100,7 @@ func TestFragmentWriterWriteFirstECH(t *testing.T) {
 	}()
 
 	if err := writer.WriteFirst(client, payload); err != nil {
-		t.Fatalf("WriteFirst with ECH: %v", err)
+		t.Fatalf("WriteFirst with TLS frag 2: %v", err)
 	}
 	_ = client.Close()
 	<-readDone
@@ -138,7 +138,7 @@ func TestFragmentWriterWriteFirstNone(t *testing.T) {
 	}
 }
 
-func TestFragmentWriterWriteFirstTLSFrag2(t *testing.T) {
+func TestFragmentWriterWriteFirstTLSFrag2Small(t *testing.T) {
 	client, server := net.Pipe()
 	t.Cleanup(func() {
 		_ = client.Close()
@@ -160,20 +160,20 @@ func TestFragmentWriterWriteFirstTLSFrag2(t *testing.T) {
 	}()
 
 	if err := writer.WriteFirst(client, payload); err != nil {
-		t.Fatalf("WriteFirst TLSFrag2: %v", err)
+		t.Fatalf("WriteFirst TLS frag 2: %v", err)
 	}
 	_ = client.Close()
 	<-readDone
 }
 
-func TestFragmentWriterWriteFirstTCP1(t *testing.T) {
+func TestFragmentWriterWriteFirstTLSFrag2Tiny(t *testing.T) {
 	client, server := net.Pipe()
 	t.Cleanup(func() {
 		_ = client.Close()
 		_ = server.Close()
 	})
 
-	writer := NewFragmentWriter(StrategyTCPSegmentation1)
+	writer := NewFragmentWriter(StrategyTLSRecordFrag2)
 	payload := []byte{0x16, 0x03, 0x01, 0x00, 0x03, 0xaa, 0xbb, 0xcc}
 
 	readDone := make(chan struct{})
@@ -189,14 +189,14 @@ func TestFragmentWriterWriteFirstTCP1(t *testing.T) {
 	<-readDone
 }
 
-func TestFragmentWriterWriteFirstTCP8(t *testing.T) {
+func TestFragmentWriterWriteFirstTLSFrag2Large(t *testing.T) {
 	client, server := net.Pipe()
 	t.Cleanup(func() {
 		_ = client.Close()
 		_ = server.Close()
 	})
 
-	writer := NewFragmentWriter(StrategyTCPSegmentation8)
+	writer := NewFragmentWriter(StrategyTLSRecordFrag2)
 	payload := make([]byte, 128)
 	for i := range payload {
 		payload[i] = byte(i)
