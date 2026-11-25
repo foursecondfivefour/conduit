@@ -32,8 +32,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Speed test now reports latency and throughput twice: directly and through the proxy,
   with per-request timeouts and no external dependencies
 - Default DPI strategy is now `tls_record_frag`
-- Tray menu trimmed: strategy, DNS, domains, options, YouTube features, stats, updates, language, logs
+- Tray menu trimmed: strategy, DNS, domains, options, YouTube features, speed test, connection test, updates, language, logs
 - Onboarding texts rewritten to match the reduced feature set
+- New application, tray, and installer icon set
+- README and the `docs/` references rewritten as terse, code-accurate summaries
 
 ## [1.3.0] - 2026-06-15
 

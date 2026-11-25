@@ -5,85 +5,38 @@
 <h1 align="center">Conduit</h1>
 
 <p align="center">
-  Windows desktop utility: local HTTP CONNECT proxy with TLS fragmentation, DNS-over-HTTPS, and an embedded YouTube viewer (Wails v3 / WebView2).<br>
-  <strong>RU + EN</strong> · Full system-tray control · Reproducible builds
+  Windows utility: local HTTP CONNECT proxy with TLS fragmentation, DNS-over-HTTPS, and an embedded YouTube viewer (Wails v3 / WebView2).
 </p>
 
 <p align="center">
   <a href="https://github.com/foursecondfivefour/conduit/releases/latest"><img src="https://img.shields.io/github/v/release/foursecondfivefour/conduit?label=download&style=flat-square" alt="Latest release"></a>
   <a href="https://github.com/foursecondfivefour/conduit/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/foursecondfivefour/conduit/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
-  <a href="https://github.com/foursecondfivefour/conduit/actions/workflows/security.yml"><img src="https://img.shields.io/github/actions/workflow/status/foursecondfivefour/conduit/security.yml?branch=main&style=flat-square&label=security" alt="Security"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"></a>
 </p>
 
-Designed for a small footprint: one WebView window, mobile YouTube UI, full system-tray control. Release builds run without a console window.
+## Features
 
-## Download
+| Area | What it does |
+|---|---|
+| Proxy | HTTP CONNECT on `127.0.0.1:31284` (or next free port), allowlist-enforced |
+| DPI evasion | TLS ClientHello fragmentation: 5-byte records, 2-byte records, or off |
+| DNS | DoH providers Cloudflare / Google / Quad9, 512-host cache, leak check, blocklist ad blocking |
+| YouTube | `m.youtube.com` in WebView2: PiP, background audio, SponsorBlock, Return YouTube Dislike |
+| Tray | Strategy, DNS, domains, options, YouTube features, speed test, connection test, updates, language, logs |
+| Windows | Autostart, system proxy with snapshot restore, minimize to tray, Kill Switch, `Ctrl+Shift+Y` |
+| Languages | RU, EN |
+| Updates | Auto-update from GitHub with mandatory SHA256 verification |
 
-- **Portable:** `conduit.exe` + `conduit-updater.exe` from [Latest release](https://github.com/foursecondfivefour/conduit/releases/latest)
-- **Installer:** `Conduit-Setup-&lt;version&gt;.exe` from [Releases](https://github.com/foursecondfivefour/conduit/releases) (installs to `%LocalAppData%\Programs\Conduit\`)
+## Install
 
-Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
+- **Portable:** `conduit.exe` + `conduit-updater.exe` from [latest release](https://github.com/foursecondfivefour/conduit/releases/latest)
+- **Installer:** `Conduit-Setup-<version>.exe` → `%LocalAppData%\Programs\Conduit\`
 
-> Unsigned builds may show a SmartScreen prompt on first run. See [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).
-
-## Features (v1.3.0)
-
-### Proxy engine
-- **HTTP CONNECT** — local proxy with TLS ClientHello fragmentation (DPI evasion)
-
-### DPI evasion
-- 3 strategies: TLS record fragmentation (5 bytes), TLS record fragmentation (2 bytes), none
-- Per-domain strategy configuration
-
-### DNS
-- **DNS-over-HTTPS** providers: Cloudflare, Google, Quad9
-- **Fastest DoH** — on-demand latency measurement picks Cloudflare / Google / Quad9
-- **DNS ad blocking** with custom blocklists
-- DNS cache with LRU eviction (512 hosts)
-- DNS leak check
-
-### YouTube integration
-- Embedded `m.youtube.com` in WebView2
-- **Picture-in-Picture (PiP)**
-- **Background audio mode**
-- SponsorBlock and Return YouTube Dislike integration
-- Auto-connect with YouTube preload
-
-### Internationalization
-- **2 languages**: RU, EN
-- Full UI translation: tray menu, onboarding, notifications
-
-### Traffic management
-- Speed test in the tray: latency and throughput measured twice, directly and through the proxy
-- Auto-connect on startup
-
-### Windows integration
-- System-tray menu with status indicator
-- Autostart (registry)
-- System proxy toggle with snapshot restore
-- Minimize-to-tray on close
-- **Ctrl+Shift+Y** — global hotkey to show/hide YouTube
-- Windows toast notifications for connection events
-- File logging (rotating, `%AppData%\Conduit\logs\`)
-- Inno Setup installer
-
-### Security & compliance
-- Allowlist-enforced CONNECT (default: YouTube only)
-- Custom domain validation (rejects TLD/broad suffixes)
-- OWASP 2025 Top 10 mitigations
-- GitHub auto-update with mandatory SHA256 verification
-- `golangci-lint`, `gosec`, `govulncheck`, CodeQL — all pass
-
-## Requirements
-
-- Windows 10 (amd64)
-- [Go 1.25+](https://go.dev/dl/) (to build from source)
-- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
+Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/). Builds are unsigned, so SmartScreen may warn on first run — see [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).
 
 ## Build
 
-Optimized release build (no console, stripped, reproducible):
+Requires Windows 10 amd64, Go 1.25+, WebView2 Runtime.
 
 ```powershell
 go generate ./...
@@ -91,7 +44,7 @@ go build -trimpath -ldflags="-s -w -H=windowsgui -buildid= -X github.com/foursec
 go build -trimpath -ldflags="-s -w -H=windowsgui -buildid=" -tags production -o build\conduit-updater.exe .\cmd\conduit-updater
 ```
 
-CI builds automatically via [GitHub Actions](.github/workflows/ci.yml).
+Or `make build` / `make release`. CI: [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## Run
 
@@ -99,46 +52,34 @@ CI builds automatically via [GitHub Actions](.github/workflows/ci.yml).
 .\build\conduit.exe
 ```
 
-1. Splash screen while Conduit starts
-2. First-launch onboarding (localized)
-3. Proxy on `127.0.0.1:31284` (or next free port)
-4. YouTube window (`https://m.youtube.com`)
-5. Tray: fragmentation strategy, DNS providers, allowlist presets, options, YouTube features, speed test, connection test, updates, language (RU/EN), logs
+Splash → first-run onboarding → proxy on `127.0.0.1:31284` → YouTube window. Everything else is controlled from the tray icon.
 
-### Portable mode
+## Flags
 
-```powershell
-.\build\conduit.exe -portable
-```
+| Flag | Effect |
+|---|---|
+| `-portable` | Store settings and logs next to the executable (`.\Conduit\`) |
+| `-no-gui` | Proxy only, no window or WebView (lowest RAM) |
+| `-system-proxy` | Enable the Windows system proxy (use with `-no-gui`) |
+| `-debug` | Debug-level logging, DevTools, remote debugging port `9222` (non-production builds) |
+| `-debug-inspector` | Open the inspector on the YouTube window at startup (requires `-debug`) |
+| `-pprof=:6060` | HTTP pprof on `127.0.0.1:6060` |
+| `-memprofile=<path>` | Write a heap profile on exit |
 
-Config and logs: `./Conduit/preferences.json`, `./Conduit/logs/conduit.log`
+## Data locations
 
-### Proxy only (lowest RAM)
+| Item | Installed | Portable |
+|---|---|---|
+| Settings | `%AppData%\Conduit\preferences.json` | `.\Conduit\preferences.json` |
+| Logs | `%AppData%\Conduit\logs\conduit.log` | `.\Conduit\logs\conduit.log` |
+| WebView2 profile | `%AppData%\Conduit\webview2\` | `.\Conduit\webview2\` |
 
-```powershell
-.\build\conduit.exe -no-gui
-.\build\conduit.exe -no-gui -system-proxy -portable
-```
+The log rotates at 5 MB. Open it from the tray: **Open log**.
 
-### Logs
-
-- Default: `%AppData%\Conduit\logs\conduit.log`
-- Portable: `./Conduit/logs/conduit.log`
-
-Open from tray: **Open log** / **Открыть лог**
-
-## Verify proxy
+## Verify the proxy
 
 ```powershell
 curl.exe -x http://127.0.0.1:31284 https://www.youtube.com -I
-```
-
-## Architecture
-
-```
-WebView2 ──── CONNECT proxy ──── DoH DNS ──── TCP:443
-                    │
-          TLS ClientHello fragmentation
 ```
 
 ## Tests
@@ -148,29 +89,28 @@ go test ./...
 go test -race ./...
 ```
 
-See [docs/DEBUGGING.md](docs/DEBUGGING.md) for pprof, soak tests, and debug builds.
+Debug builds, pprof, and soak testing: [docs/DEBUGGING.md](docs/DEBUGGING.md).
 
-## Security considerations
+## Security
 
-- The proxy listens on **127.0.0.1** only (CONNECT, allowlist-enforced).
-- **System proxy** lets other local apps use Conduit — enable only if you understand the scope.
-- Default allowlist is **YouTube only**; avoid broad custom suffixes like `com`.
-- Auto-update requires a valid **SHA256** sidecar from GitHub releases.
-
-Details: [docs/SECURITY.md](docs/SECURITY.md).
+- The proxy binds `127.0.0.1` only; CONNECT targets pass an allowlist (default: YouTube and Google domains).
+- The system proxy routes other local apps through Conduit — enable it deliberately.
+- Custom domains are validated; TLDs, IP addresses, and broad suffixes such as `com` are rejected.
+- Updates use HTTPS, a GitHub host allowlist, mandatory SHA256, and a PE header check.
+- Builds are unsigned. Threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Troubleshooting
 
-| Issue | Suggestion |
-|-------|------------|
-| SmartScreen warning | Expected for unsigned builds; see CODE_SIGNING.md |
-| YouTube won't load | Try another DPI strategy; run connection test; flush DNS cache |
-| Other apps lose network | Disable system proxy in tray before quitting |
-| Auto-update fails | Download manually from GitHub; check antivirus lock on `conduit.exe` |
+| Symptom | Fix |
+|---|---|
+| SmartScreen warning | Expected for unsigned builds, see CODE_SIGNING.md |
+| YouTube does not load | Switch fragmentation strategy, run the connection test, flush the DNS cache |
+| Other apps lose connectivity | Turn off the system proxy in the tray before quitting |
+| Update fails | Download manually from GitHub; check antivirus lock on `conduit.exe` |
 
 ## Disclaimer
 
-Network filtering and circumvention may be regulated in your jurisdiction. You are responsible for compliance with local law. This project is provided as-is without warranty.
+Traffic filtering and circumvention are regulated differently by jurisdiction. Compliance with local law is the user's responsibility. The software is provided as-is, without warranty.
 
 ## License
 
