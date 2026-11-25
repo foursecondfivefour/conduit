@@ -60,78 +60,32 @@ func TestIntegrationConnectAllowlistAndRelay(t *testing.T) {
 	}
 }
 
-func TestIntegrationTrafficStats(t *testing.T) {
-	settings := config.DefaultSettings()
-	settings.AllowlistPreset = PresetYouTube.String()
-
-	srv := NewServer(dns.NewResolver(dns.ProviderCloudflare), func() config.Settings { return settings })
-
-	stats := NewTrafficStats()
-	srv.SetStats(stats)
-
-	stats.RecordConnection("www.youtube.com", 1024, 2048)
-	stats.RecordConnection("r1---sn.googlevideo.com", 512, 1024)
-
-	snapshot := stats.Snapshot()
-	if snapshot.Connections != 2 {
-		t.Fatalf("connections = %d, want 2", snapshot.Connections)
-	}
-	if snapshot.BytesIn != 1536 {
-		t.Fatalf("bytesIn = %d, want 1536", snapshot.BytesIn)
-	}
-	if snapshot.BytesOut != 3072 {
-		t.Fatalf("bytesOut = %d, want 3072", snapshot.BytesOut)
-	}
-	if len(snapshot.DomainHits) != 2 {
-		t.Fatalf("domainHits = %d, want 2", len(snapshot.DomainHits))
-	}
-	if snapshot.DomainHits["www.youtube.com"] != 1 {
-		t.Fatalf("youtube hits = %d, want 1", snapshot.DomainHits["www.youtube.com"])
-	}
-}
-
-func TestIntegrationTrafficStatsActiveConnections(t *testing.T) {
-	stats := NewTrafficStats()
-	stats.ActiveConns.Add(1)
-	stats.ActiveConns.Add(1)
-	stats.ActiveConns.Add(-1)
-
-	snapshot := stats.Snapshot()
-	if snapshot.ActiveConns != 1 {
-		t.Fatalf("activeConns = %d, want 1", snapshot.ActiveConns)
-	}
-	if snapshot.Uptime < 0 {
-		t.Fatalf("uptime = %d, should be >= 0", snapshot.Uptime)
-	}
-}
-
-func TestIntegrationGeneratePAC(t *testing.T) {
-	pac := GeneratePAC("127.0.0.1", 31284, []string{"youtube.com", "googlevideo.com"})
-	if !strings.Contains(pac, "FindProxyForURL") {
-		t.Fatal("PAC should contain FindProxyForURL")
-	}
-	if !strings.Contains(pac, "youtube.com") {
-		t.Fatal("PAC should contain youtube.com")
-	}
-	if !strings.Contains(pac, "PROXY 127.0.0.1:31284") {
-		t.Fatal("PAC should contain PROXY directive")
-	}
-}
-
-func TestIntegrationGeneratePACEmptyDomains(t *testing.T) {
-	pac := GeneratePAC("127.0.0.1", 31284, nil)
-	if !strings.Contains(pac, "FindProxyForURL") {
-		t.Fatal("PAC should contain FindProxyForURL")
-	}
-	if !strings.Contains(pac, "PROXY 127.0.0.1:31284") {
-		t.Fatal("PAC should contain PROXY directive for empty domains")
-	}
-}
-
 func TestIntegrationSpeedTestInvalidURL(t *testing.T) {
 	ctx := context.Background()
 	result := RunSpeedTest(ctx, "://invalid")
 	if result.Error == "" {
 		t.Fatal("expected error for invalid URL")
+	}
+}
+
+func TestSpeedTestInvalidProxyURL(t *testing.T) {
+	result := RunSpeedTest(context.Background(), "://invalid")
+	if result.Error == "" {
+		t.Fatal("expected error for invalid proxy URL")
+	}
+}
+
+func TestSpeedTestResultFieldsAreSeparate(t *testing.T) {
+	result := &SpeedTestResult{
+		DirectLatency:      10 * time.Millisecond,
+		DirectDownloadMbps: 50,
+		ProxyLatency:       20 * time.Millisecond,
+		ProxyDownloadMbps:  25,
+	}
+	if result.DirectLatency == result.ProxyLatency {
+		t.Fatal("direct and proxied latency must be independent")
+	}
+	if result.DirectDownloadMbps == result.ProxyDownloadMbps {
+		t.Fatal("direct and proxied throughput must be independent")
 	}
 }

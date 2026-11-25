@@ -26,7 +26,6 @@ type Server struct {
 	settings func() config.Settings
 	dialFunc func(context.Context, string, string) (net.Conn, error)
 
-	stats      *TrafficStats
 	killSwitch *KillSwitch
 
 	mu       sync.RWMutex
@@ -125,18 +124,6 @@ func (s *Server) Running() bool {
 }
 
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
-	// Serve PAC file if requested
-	if r.Method == http.MethodGet && r.URL.Path == "/proxy.pac" {
-		st := s.settings()
-		domains := st.CustomDomains
-		preset := AllowlistPreset(st.AllowlistPreset)
-		if preset.Valid() {
-			domains = append(domains, preset.Domains()...)
-		}
-		PACHandler(config.ListenHost, s.Port(), domains)(w, r)
-		return
-	}
-
 	if r.Method != http.MethodConnect {
 		http.Error(w, "CONNECT required", http.StatusMethodNotAllowed)
 		return
@@ -216,16 +203,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	finalStrategy := policy.Get(host)
 	writer := dpi.NewFragmentWriter(finalStrategy)
 
-	if s.stats != nil {
-		s.stats.ActiveConns.Add(1)
-	}
-	sent, recv, relayErr := dpi.Relay(client, upstream, writer)
-	if relayErr != nil {
-		slog.Warn("proxy: relay error", "err", relayErr, "host", host, "sent", sent, "recv", recv)
-	}
-	if s.stats != nil {
-		s.stats.RecordConnection(host, sent, recv)
-		s.stats.ActiveConns.Add(-1)
+	if _, _, relayErr := dpi.Relay(client, upstream, writer); relayErr != nil {
+		slog.Warn("proxy: relay error", "err", relayErr, "host", host)
 	}
 }
 
@@ -239,14 +218,4 @@ func (s *Server) ProxyURL() string {
 		return ""
 	}
 	return fmt.Sprintf("http://%s:%d", config.ListenHost, port)
-}
-
-// SetStats attaches a TrafficStats tracker to this server.
-func (s *Server) SetStats(stats *TrafficStats) {
-	s.stats = stats
-}
-
-// Stats returns the attached traffic statistics tracker.
-func (s *Server) Stats() *TrafficStats {
-	return s.stats
 }

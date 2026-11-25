@@ -222,10 +222,8 @@ func (s *ControlService) IsSystemDNSBlocked() bool {
 	return s.dnsBlocker.IsBlocked()
 }
 
-// RunSpeedTest runs a speed test through the proxy.
-func (s *ControlService) RunSpeedTest() *proxy.SpeedTestResult {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+// RunSpeedTest measures direct and proxied throughput.
+func (s *ControlService) RunSpeedTest(ctx context.Context) *proxy.SpeedTestResult {
 	return proxy.RunSpeedTest(ctx, s.proxy.ProxyURL())
 }
 

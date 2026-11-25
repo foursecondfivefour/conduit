@@ -31,7 +31,6 @@ Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webvi
 
 ### Proxy engine
 - **HTTP CONNECT** — local proxy with TLS ClientHello fragmentation (DPI evasion)
-- **PAC file** — URL generation for browser integration
 
 ### DPI evasion
 - 3 strategies: TLS record fragmentation (5 bytes), TLS record fragmentation (2 bytes), none
@@ -39,7 +38,7 @@ Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webvi
 
 ### DNS
 - **DNS-over-HTTPS** providers: Cloudflare, Google, Quad9
-- **Auto-DNS** — latency-based selection
+- **Fastest DoH** — on-demand latency measurement picks Cloudflare / Google / Quad9
 - **DNS ad blocking** with custom blocklists
 - DNS cache with LRU eviction (512 hosts)
 - DNS leak check
@@ -56,10 +55,8 @@ Requires [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webvi
 - Full UI translation: tray menu, onboarding, notifications
 
 ### Traffic management
-- Traffic statistics window (real-time byte counting)
-- Speed test tool
+- Speed test in the tray: latency and throughput measured twice, directly and through the proxy
 - Auto-connect on startup
-- Export/import settings (`preferences.json`)
 
 ### Windows integration
 - System-tray menu with status indicator
@@ -106,7 +103,7 @@ CI builds automatically via [GitHub Actions](.github/workflows/ci.yml).
 2. First-launch onboarding (localized)
 3. Proxy on `127.0.0.1:31284` (or next free port)
 4. YouTube window (`https://m.youtube.com`)
-5. Tray: DPI strategies, DNS providers, allowlist presets, options, updates, connection test, language selector, logs
+5. Tray: fragmentation strategy, DNS providers, allowlist presets, options, YouTube features, speed test, connection test, updates, language (RU/EN), logs
 
 ### Portable mode
 

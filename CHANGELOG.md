@@ -19,8 +19,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Multi-port proxy configuration (`ProxyPortConfig`, `AddExtraPorts`)
 - 31 UI languages; only RU and EN remain
 
+- Statistics window, `TrafficStats`, and the `stats:fetch` event
+- PAC file serving (`/proxy.pac`, `GeneratePAC`, `PACHandler`) and the "Copy PAC URL" tray item
+- Settings export/import tray entries (export wrote `conduit-settings-<date>.json`, import read a
+  hardcoded `conduit-settings.json` that never existed, so import always failed)
+- Dead `AutoDNS` preference and its checkbox (nothing ever acted on it); the manual
+  "Auto-select DNS" action remains
+- "Per-domain DPI" submenu — it was a single disabled item
+
 ### Changed
 
+- Speed test now reports latency and throughput twice: directly and through the proxy,
+  with per-request timeouts and no external dependencies
 - Default DPI strategy is now `tls_record_frag`
 - Tray menu trimmed: strategy, DNS, domains, options, YouTube features, stats, updates, language, logs
 - Onboarding texts rewritten to match the reduced feature set

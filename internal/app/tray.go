@@ -2,19 +2,14 @@ package app
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
 
-	appui "github.com/foursecondfivefour/conduit/internal/app/ui"
 	"github.com/foursecondfivefour/conduit/internal/config"
 	"github.com/foursecondfivefour/conduit/internal/dns"
 	"github.com/foursecondfivefour/conduit/internal/dpi"
@@ -26,11 +21,13 @@ import (
 	yt "github.com/foursecondfivefour/conduit/internal/youtube"
 )
 
+// speedTestTimeout bounds the whole speed test run, including both probes.
+const speedTestTimeout = 45 * time.Second
+
 type trayDeps struct {
 	app       *application.App
 	youtube   *application.WebviewWindow
 	proxy     *proxy.Server
-	stats     *proxy.TrafficStats
 	control   *ControlService
 	prefs     *preferenceStore
 	flow      *startupFlow
@@ -65,7 +62,6 @@ type trayUI struct {
 	dnsItems          map[dns.Provider]*application.MenuItem
 	domainItems       map[proxy.AllowlistPreset]*application.MenuItem
 	promptedUpdateVer string
-	statsWindow       *application.WebviewWindow
 }
 
 func setupTray(deps trayDeps) *trayUI {
@@ -160,16 +156,11 @@ func (ui *trayUI) rebuildMenu() {
 	})
 	dnsSubItems := append(dnsItems, application.NewMenuItemSeparator(), flushDNS, dnsLeakItem, dnsBlockItem)
 
-	// Feature 4.5: Auto DNS Selection
-	autoDNSItem := application.NewMenuItemCheckbox(i18n.T(lang, "tray.dns_auto"), p.AutoDNS)
-	autoDNSItem.OnClick(func(*application.Context) {
-		ui.deps.prefs.Update(func(pref *Preferences) { pref.AutoDNS = !pref.AutoDNS })
-		ui.refreshMenu()
-	})
+	// Fastest DoH provider, measured once on demand.
 	autoDNSSelectItem := application.NewMenuItem(i18n.T(lang, "tray.dns_auto.selecting")).OnClick(func(*application.Context) {
 		go ui.runAutoDNSSelect()
 	})
-	dnsSubItems = append(dnsSubItems, application.NewMenuItemSeparator(), autoDNSItem, autoDNSSelectItem)
+	dnsSubItems = append(dnsSubItems, application.NewMenuItemSeparator(), autoDNSSelectItem)
 
 	dnsAdBlockItem := application.NewMenuItemCheckbox(i18n.T(lang, "tray.dns_adblock"), p.DNSAdBlock)
 	dnsAdBlockItem.OnClick(func(*application.Context) {
@@ -275,59 +266,10 @@ func (ui *trayUI) rebuildMenu() {
 
 	youtubeFeaturesMenu := application.NewMenuFromItems(sponsorBlockItem, pipItem, rydItem, bgAudioItem)
 
-	// Statistics
-	statsItem := application.NewMenuItem(i18n.T(lang, "tray.stats")).OnClick(func(*application.Context) {
-		ui.openStatsWindow()
-	})
-
 	// Feature 4.4: Speed Test
 	speedTestItem := application.NewMenuItem(i18n.T(lang, "tray.speedtest")).OnClick(func(*application.Context) {
 		go ui.runSpeedTest()
 	})
-
-	// Feature 4.3: Copy PAC URL
-	pacURLItem := application.NewMenuItem(i18n.T(lang, "tray.pac_url")).OnClick(func(*application.Context) {
-		port := ui.deps.proxy.Port()
-		pacURL := fmt.Sprintf("http://%s:%d/proxy.pac", config.ListenHost, port)
-		copyToClipboard(pacURL)
-		if ui.tray != nil {
-			ui.tray.SetTooltip(i18n.T(lang, "tray.pac_copied"))
-		}
-	})
-
-	// Export / Import settings
-	desktop := desktopDir()
-	exportPath := filepath.Join(desktop, "conduit-settings.json")
-	exportItem := application.NewMenuItem(i18n.T(lang, "tray.export_settings")).OnClick(func(*application.Context) {
-		timestamp := time.Now().Format("20060102")
-		exportFile := filepath.Join(desktop, fmt.Sprintf("conduit-settings-%s.json", timestamp))
-		if err := ui.deps.prefs.Export(exportFile); err != nil {
-			slog.Warn("export settings failed", "err", err)
-		} else {
-			if ui.tray != nil {
-				ui.tray.SetTooltip(i18n.T(lang, "tray.export.done"))
-			}
-		}
-	})
-	importItem := application.NewMenuItem(i18n.T(lang, "tray.import_settings")).OnClick(func(*application.Context) {
-		if err := ui.deps.prefs.Import(exportPath); err != nil {
-			slog.Warn("import settings failed", "err", err)
-			if ui.tray != nil {
-				ui.tray.SetTooltip(i18n.T(lang, "tray.import.error"))
-			}
-		} else {
-			if ui.tray != nil {
-				ui.tray.SetTooltip(i18n.T(lang, "tray.import.done"))
-			}
-		}
-		ui.refreshMenu()
-	})
-	settingsMenu := application.NewMenuFromItems(exportItem, importItem)
-
-	// Per-domain DPI
-	perDomainItem := application.NewMenuItem(i18n.T(lang, "tray.per_domain_dpi.managed"))
-	perDomainItem.SetEnabled(false)
-	perDomainMenu := application.NewMenuFromItems(perDomainItem)
 
 	// Updates
 	ui.updateStatus = application.NewMenuItem(ui.updateStatusLabel())
@@ -435,11 +377,7 @@ func (ui *trayUI) rebuildMenu() {
 		application.NewSubmenu(i18n.T(lang, "tray.domains"), domainMenu),
 		application.NewSubmenu(i18n.T(lang, "tray.options"), optionsMenu),
 		application.NewSubmenu(i18n.T(lang, "tray.youtube_features"), youtubeFeaturesMenu),
-		statsItem,
 		speedTestItem,
-		pacURLItem,
-		application.NewSubmenu(i18n.T(lang, "tray.settings_io"), settingsMenu),
-		application.NewSubmenu(i18n.T(lang, "tray.per_domain_dpi"), perDomainMenu),
 		testConn,
 		application.NewSubmenu(i18n.T(lang, "tray.updates"), updatesMenu),
 		application.NewSubmenu(i18n.T(lang, "tray.language"), langMenu),
@@ -802,52 +740,6 @@ func (ui *trayUI) toggleDNSAdBlock() {
 	ui.refreshMenu()
 }
 
-func (ui *trayUI) openStatsWindow() {
-	ui.mu.Lock()
-	existing := ui.statsWindow
-	ui.mu.Unlock()
-	if existing != nil {
-		existing.Show()
-		return
-	}
-	w := ui.deps.app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:             "stats",
-		Title:            "Conduit Statistics",
-		HTML:             appui.StatsHTML,
-		Width:            500,
-		Height:           600,
-		BackgroundColour: application.NewRGB(26, 26, 46),
-	})
-	ui.mu.Lock()
-	ui.statsWindow = w
-	ui.mu.Unlock()
-	w.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
-		ui.mu.Lock()
-		ui.statsWindow = nil
-		ui.mu.Unlock()
-	})
-	ui.deps.app.Event.On("stats:fetch", func(e *application.CustomEvent) {
-		if ui.deps.stats == nil {
-			return
-		}
-		snapshot := ui.deps.stats.Snapshot()
-		b, err := json.Marshal(snapshot)
-		if err != nil {
-			return
-		}
-		w.ExecJS("window.__stats_update && window.__stats_update(" + string(b) + ")")
-	})
-	w.Show()
-}
-
-func desktopDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "."
-	}
-	return filepath.Join(home, "Desktop")
-}
-
 func menuFromItems(items []*application.MenuItem) *application.Menu {
 	if len(items) == 0 {
 		return application.NewMenu()
@@ -865,8 +757,13 @@ func (ui *trayUI) runSpeedTest() {
 	if ui.tray != nil {
 		ui.tray.SetTooltip(i18n.T(lang, "tray.speedtest.running"))
 	}
-	result := ui.deps.control.RunSpeedTest()
+
+	ctx, cancel := context.WithTimeout(context.Background(), speedTestTimeout)
+	defer cancel()
+	result := ui.deps.control.RunSpeedTest(ctx)
+
 	if result.Error != "" {
+		slog.Warn("speed test failed", "err", result.Error)
 		if ui.tray != nil {
 			ui.tray.SetTooltip(i18n.Tf(lang, "tray.connection.fail", result.Error))
 		}
@@ -874,7 +771,8 @@ func (ui *trayUI) runSpeedTest() {
 	}
 	if ui.tray != nil {
 		ui.tray.SetTooltip(i18n.Tf(lang, "tray.speedtest.result",
-			result.Latency.Milliseconds(), result.DownloadMbps))
+			result.ProxyLatency.Milliseconds(), result.ProxyDownloadMbps,
+			result.DirectLatency.Milliseconds(), result.DirectDownloadMbps))
 	}
 }
 

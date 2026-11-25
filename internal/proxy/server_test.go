@@ -126,17 +126,6 @@ func TestServerStopNotRunning(t *testing.T) {
 	}
 }
 
-func TestServerTrafficStats(t *testing.T) {
-	srv := newTestServer(t, nil)
-	defer srv.Stop(context.Background())
-
-	stats := NewTrafficStats()
-	srv.SetStats(stats)
-	if srv.Stats() != stats {
-		t.Fatal("Stats() should return the set stats")
-	}
-}
-
 func TestServerKillSwitch(t *testing.T) {
 	srv := newTestServer(t, nil)
 	defer srv.Stop(context.Background())
@@ -182,27 +171,6 @@ func TestServerStartTwice(t *testing.T) {
 	}
 	if port1 != port2 {
 		t.Fatalf("second start should return same port: %d != %d", port2, port1)
-	}
-}
-
-func TestServerPACFile(t *testing.T) {
-	srv := newTestServer(t, nil)
-	defer srv.Stop(context.Background())
-
-	req := httptest.NewRequest(http.MethodGet, "/proxy.pac", nil)
-	rec := httptest.NewRecorder()
-	srv.serve(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("PAC status = %d, want 200", rec.Code)
-	}
-	contentType := rec.Header().Get("Content-Type")
-	if !strings.Contains(contentType, "x-ns-proxy-autoconfig") && !strings.Contains(contentType, "text/plain") {
-		t.Errorf("unexpected content type: %s", contentType)
-	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "FindProxyForURL") {
-		t.Fatal("PAC body should contain FindProxyForURL")
 	}
 }
 
