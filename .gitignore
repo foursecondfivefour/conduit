@@ -20,6 +20,9 @@ profile.cov
 /dist/
 /release/
 
+# Rust
+/rust/target/
+
 # Go workspace (local only, not committed)
 go.work
 go.work.sum

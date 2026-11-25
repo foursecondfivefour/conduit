@@ -1,0 +1,5 @@
+[build]
+rustflags = ["-C", "link-self-contained=no", "-C", "link-arg=-fuse-ld=bfd"]
+
+[target.x86_64-unknown-linux-gnu]
+linker = "cc"
