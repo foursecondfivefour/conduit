@@ -16,7 +16,7 @@ import (
 )
 
 func TestRaceSettingsProxyConcurrent(t *testing.T) {
-	store := NewSettingsStore(Preferences{Strategy: string(dpi.StrategyTCPSegmentation), DoHProvider: string(dns.ProviderCloudflare), AllowlistPreset: string(proxy.PresetYouTube)})
+	store := NewSettingsStore(Preferences{Strategy: string(dpi.StrategyTLSRecordFrag), DoHProvider: string(dns.ProviderCloudflare), AllowlistPreset: string(proxy.PresetYouTube)})
 	resolver := dns.NewResolver(store.Snapshot().DoHProvider)
 	srv := proxy.NewServer(resolver, store.Snapshot)
 	ctrl := NewControlService(srv, resolver, store, nil)

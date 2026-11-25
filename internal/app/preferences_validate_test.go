@@ -28,18 +28,8 @@ func TestPreferencesValidateCustomDomains(t *testing.T) {
 	}
 }
 
-func TestPreferencesValidateLanguageAll33(t *testing.T) {
-	validLangs := []string{
-		"ru", "en", "de", "fr", "es", "tr", "fa",
-		"tt", "ba", "ce", "cv", "sah", "bua", "os", "av",
-		"mhr", "udm", "kv", "myv", "kbd", "tyv", "xal",
-		"uk", "be", "kk", "uz", "hy", "az", "ka", "ro",
-		"ky", "tg", "tk",
-	}
-
-	if len(validLangs) != 33 {
-		t.Fatalf("expected 33 languages, got %d", len(validLangs))
-	}
+func TestPreferencesValidateLanguageSupported(t *testing.T) {
+	validLangs := []string{"ru", "en"}
 
 	for _, lang := range validLangs {
 		p := &Preferences{Language: lang}
@@ -51,7 +41,7 @@ func TestPreferencesValidateLanguageAll33(t *testing.T) {
 }
 
 func TestPreferencesValidateLanguageInvalidFallsBack(t *testing.T) {
-	invalidLangs := []string{"", "jp", "it", "pt", "ch", "unknown", "123"}
+	invalidLangs := []string{"", "jp", "it", "pt", "ch", "unknown", "123", "de", "fr"}
 	for _, lang := range invalidLangs {
 		p := &Preferences{Language: lang}
 		SanitizePreferences(p)
@@ -64,7 +54,7 @@ func TestPreferencesValidateLanguageInvalidFallsBack(t *testing.T) {
 func TestPreferencesValidateInvalidStrategyFallsBack(t *testing.T) {
 	p := &Preferences{Strategy: "invalid_strategy"}
 	SanitizePreferences(p)
-	if p.Strategy != "tcp_segmentation" {
+	if p.Strategy != "tls_record_frag" {
 		t.Fatalf("invalid strategy = %s", p.Strategy)
 	}
 }
@@ -99,17 +89,17 @@ func TestPreferencesValidateWindowSizeMinimums(t *testing.T) {
 func TestPreferencesValidateDomainStrategies(t *testing.T) {
 	p := &Preferences{
 		DomainStrategies: map[string]string{
-			"youtube.com":        "tcp_segmentation_8",
-			"googlevideo.com":    "tls_record_frag",
-			"invalid.com":        "bad_strategy",
-			"also_invalid.com":   "",
+			"youtube.com":      "tls_record_frag_2",
+			"googlevideo.com":  "tls_record_frag",
+			"invalid.com":      "bad_strategy",
+			"also_invalid.com": "",
 		},
 	}
 	SanitizePreferences(p)
 	if len(p.DomainStrategies) != 2 {
 		t.Fatalf("DomainStrategies len = %d, want 2", len(p.DomainStrategies))
 	}
-	if p.DomainStrategies["youtube.com"] != "tcp_segmentation_8" {
+	if p.DomainStrategies["youtube.com"] != "tls_record_frag_2" {
 		t.Fatal("valid strategy was dropped")
 	}
 	if _, exists := p.DomainStrategies["invalid.com"]; exists {

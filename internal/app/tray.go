@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,30 +21,25 @@ import (
 	"github.com/foursecondfivefour/conduit/internal/i18n"
 	filelog "github.com/foursecondfivefour/conduit/internal/log"
 	"github.com/foursecondfivefour/conduit/internal/proxy"
-	"github.com/foursecondfivefour/conduit/internal/tun"
 	"github.com/foursecondfivefour/conduit/internal/update"
 	"github.com/foursecondfivefour/conduit/internal/winproxy"
 	yt "github.com/foursecondfivefour/conduit/internal/youtube"
 )
 
 type trayDeps struct {
-	app          *application.App
-	youtube      *application.WebviewWindow
-	proxy        *proxy.Server
-	socks5       *proxy.SOCKS5Server
-	stats        *proxy.TrafficStats
-	control      *ControlService
-	prefs        *preferenceStore
-	flow         *startupFlow
-	updater      *update.Service
-	winProxy     *winproxy.Manager
-	paths        RuntimePaths
-	ui           UIOptions
-	pip          *PiPWindow
-	adBlocker    *dns.AdBlocker
-	tunMode      *tun.TUNMode
-	masque       *proxy.MASQUEServer
-	splitTunnelPort int
+	app       *application.App
+	youtube   *application.WebviewWindow
+	proxy     *proxy.Server
+	stats     *proxy.TrafficStats
+	control   *ControlService
+	prefs     *preferenceStore
+	flow      *startupFlow
+	updater   *update.Service
+	winProxy  *winproxy.Manager
+	paths     RuntimePaths
+	ui        UIOptions
+	pip       *PiPWindow
+	adBlocker *dns.AdBlocker
 }
 
 type trayUI struct {
@@ -55,18 +49,18 @@ type trayUI struct {
 	stopOnce sync.Once
 	doneCh   chan struct{}
 
-	mu              sync.Mutex
-	checkMu         sync.Mutex
-	speedTestMu     sync.Mutex
-	rebuildScheduled atomic.Bool
-	tray            *application.SystemTray
-	menu            *application.Menu
-	statusItem      *application.MenuItem
-	updateStatus    *application.MenuItem
-	installItem     *application.MenuItem
-	healthOK        bool
-	healthKnown     bool
-	previousRunning bool
+	mu                sync.Mutex
+	checkMu           sync.Mutex
+	speedTestMu       sync.Mutex
+	rebuildScheduled  atomic.Bool
+	tray              *application.SystemTray
+	menu              *application.Menu
+	statusItem        *application.MenuItem
+	updateStatus      *application.MenuItem
+	installItem       *application.MenuItem
+	healthOK          bool
+	healthKnown       bool
+	previousRunning   bool
 	strategyItems     map[dpi.Strategy]*application.MenuItem
 	dnsItems          map[dns.Provider]*application.MenuItem
 	domainItems       map[proxy.AllowlistPreset]*application.MenuItem
@@ -233,18 +227,6 @@ func (ui *trayUI) rebuildMenu() {
 		ui.deps.prefs.Update(func(pref *Preferences) { pref.KillSwitch = enabled })
 		ui.refreshMenu()
 	})
-	socks5Item := application.NewMenuItemCheckbox(i18n.T(lang, "tray.socks5"), p.SOCKS5)
-	socks5Item.OnClick(func(*application.Context) {
-		ui.deps.prefs.Update(func(pref *Preferences) { pref.SOCKS5 = !pref.SOCKS5 })
-		ui.refreshMenu()
-	})
-
-	// Feature 4.1: Split Tunnel
-	splitTunnelItem := application.NewMenuItemCheckbox(i18n.T(lang, "tray.split_tunnel"), p.SplitTunnel)
-	splitTunnelItem.OnClick(func(*application.Context) {
-		ui.deps.prefs.Update(func(pref *Preferences) { pref.SplitTunnel = !pref.SplitTunnel })
-		ui.refreshMenu()
-	})
 
 	// Feature 4.6: Auto-connect
 	autoConnectItem := application.NewMenuItemCheckbox(i18n.T(lang, "tray.auto_connect"), p.AutoConnect)
@@ -253,89 +235,8 @@ func (ui *trayUI) rebuildMenu() {
 		ui.refreshMenu()
 	})
 
-	// Feature 4.7: TUN Mode
-	tunModeItem := application.NewMenuItemCheckbox(i18n.T(lang, "tray.tun_mode"), p.TUNMode)
-	tunModeItem.OnClick(func(*application.Context) {
-		enabled := !ui.deps.prefs.Get().TUNMode
-		if enabled {
-			showTUNWarning(ui.lang())
-		}
-		if ui.deps.tunMode != nil {
-			if enabled {
-				exePath, _ := os.Executable()
-				if err := ui.deps.tunMode.Enable(exePath); err != nil {
-					slog.Warn("tray: tun mode enable failed", "err", err)
-				}
-			} else {
-				if err := ui.deps.tunMode.Disable(); err != nil {
-					slog.Warn("tray: tun mode disable failed", "err", err)
-				}
-			}
-		}
-		ui.deps.prefs.Update(func(pref *Preferences) { pref.TUNMode = enabled })
-		ui.refreshMenu()
-	})
-
-	// Feature 4.2: Upstream Proxy submenu
-	upstreamNone := application.NewMenuItemRadio(i18n.T(lang, "tray.upstream.none"), p.UpstreamHost == "" || p.UpstreamPort == 0)
-	upstreamNone.OnClick(func(*application.Context) {
-		ui.deps.prefs.Update(func(pref *Preferences) {
-			pref.UpstreamType = ""
-			pref.UpstreamHost = ""
-			pref.UpstreamPort = 0
-			pref.UpstreamUser = ""
-			pref.UpstreamPassword = ""
-		})
-		ui.refreshMenu()
-	})
-	upstreamConfigured := application.NewMenuItemRadio(
-		i18n.Tf(lang, "tray.upstream.configured", p.UpstreamHost, p.UpstreamPort),
-		p.UpstreamHost != "" && p.UpstreamPort > 0,
-	)
-	upstreamConfigured.SetEnabled(false)
-	upstreamMenu := menuFromItems([]*application.MenuItem{upstreamNone, upstreamConfigured})
-
-	// Feature 5.2: MASQUE (HTTP/3)
-	masqueItem := application.NewMenuItemCheckbox(i18n.T(lang, "tray.masque"), p.MASQUE)
-	masqueItem.OnClick(func(*application.Context) {
-		enabled := !ui.deps.prefs.Get().MASQUE
-		if enabled {
-			if ui.deps.masque != nil {
-				if err := ui.deps.masque.Start(context.Background(), config.ListenHost, config.DefaultMASQUEPort); err != nil {
-					slog.Warn("tray: masque start failed", "err", err)
-				}
-			}
-		} else {
-			if ui.deps.masque != nil {
-				if err := ui.deps.masque.Stop(); err != nil {
-					slog.Warn("tray: masque stop failed", "err", err)
-				}
-			}
-		}
-		ui.deps.prefs.Update(func(pref *Preferences) { pref.MASQUE = enabled })
-		ui.refreshMenu()
-	})
-
-	// Feature 5.3: AI DPI
-	aiDPIItem := application.NewMenuItemCheckbox(i18n.T(lang, "tray.ai_dpi"), p.AIDPI)
-	aiDPIItem.OnClick(func(*application.Context) {
-		enabled := !ui.deps.prefs.Get().AIDPI
-		ui.deps.prefs.Update(func(pref *Preferences) { pref.AIDPI = enabled })
-		if ui.deps.proxy != nil {
-			st := ui.deps.control.Settings()
-			if enabled {
-				aiSelector := dpi.NewAIStrategySelector(st.Strategy)
-				ui.deps.proxy.SetAISelector(aiSelector)
-			} else {
-				ui.deps.proxy.SetAISelector(nil)
-			}
-		}
-		ui.refreshMenu()
-	})
-
 	optionsMenu := application.NewMenuFromItems(
-		autostartItem, sysProxyItem, minTrayItem, killSwitchItem, socks5Item,
-		splitTunnelItem, autoConnectItem, tunModeItem, masqueItem, aiDPIItem,
+		autostartItem, sysProxyItem, minTrayItem, killSwitchItem, autoConnectItem,
 	)
 
 	// YouTube features
@@ -428,19 +329,6 @@ func (ui *trayUI) rebuildMenu() {
 	perDomainItem.SetEnabled(false)
 	perDomainMenu := application.NewMenuFromItems(perDomainItem)
 
-	// Multi-port
-	portsItem := application.NewMenuItem(i18n.T(lang, "tray.ports.configure"))
-	portsItem.SetEnabled(false)
-	extraPorts := ui.deps.proxy.ExtraPorts()
-	if len(extraPorts) > 0 {
-		portStrs := make([]string, len(extraPorts))
-		for i, p := range extraPorts {
-			portStrs[i] = fmt.Sprintf(":%d", p)
-		}
-		portsItem.SetLabel(fmt.Sprintf("%s: %s", i18n.T(lang, "tray.ports"), strings.Join(portStrs, ", ")))
-	}
-	portsMenu := application.NewMenuFromItems(portsItem)
-
 	// Updates
 	ui.updateStatus = application.NewMenuItem(ui.updateStatusLabel())
 	ui.updateStatus.SetEnabled(false)
@@ -482,75 +370,20 @@ func (ui *trayUI) rebuildMenu() {
 	)
 
 	// Language
-	langRU := application.NewMenuItemRadio(i18n.T(lang, "tray.language.ru"), lang == i18n.LangRU)
-	langRU.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangRU) })
-	langEN := application.NewMenuItemRadio(i18n.T(lang, "tray.language.en"), lang == i18n.LangEN)
-	langEN.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangEN) })
-	langDE := application.NewMenuItemRadio(i18n.T(lang, "tray.language.de"), lang == i18n.LangDE)
-	langDE.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangDE) })
-	langFR := application.NewMenuItemRadio(i18n.T(lang, "tray.language.fr"), lang == i18n.LangFR)
-	langFR.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangFR) })
-	langES := application.NewMenuItemRadio(i18n.T(lang, "tray.language.es"), lang == i18n.LangES)
-	langES.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangES) })
-	langTR := application.NewMenuItemRadio(i18n.T(lang, "tray.language.tr"), lang == i18n.LangTR)
-	langTR.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangTR) })
-	langFA := application.NewMenuItemRadio(i18n.T(lang, "tray.language.fa"), lang == i18n.LangFA)
-	langFA.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangFA) })
-	langTT := application.NewMenuItemRadio(i18n.T(lang, "tray.language.tt"), lang == i18n.LangTT)
-	langTT.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangTT) })
-	langBA := application.NewMenuItemRadio(i18n.T(lang, "tray.language.ba"), lang == i18n.LangBA)
-	langBA.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangBA) })
-	langCE := application.NewMenuItemRadio(i18n.T(lang, "tray.language.ce"), lang == i18n.LangCE)
-	langCE.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangCE) })
-	langCV := application.NewMenuItemRadio(i18n.T(lang, "tray.language.cv"), lang == i18n.LangCV)
-	langCV.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangCV) })
-	langSAH := application.NewMenuItemRadio(i18n.T(lang, "tray.language.sah"), lang == i18n.LangSAH)
-	langSAH.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangSAH) })
-	langBUA := application.NewMenuItemRadio(i18n.T(lang, "tray.language.bua"), lang == i18n.LangBUA)
-	langBUA.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangBUA) })
-	langOS := application.NewMenuItemRadio(i18n.T(lang, "tray.language.os"), lang == i18n.LangOS)
-	langOS.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangOS) })
-	langAV := application.NewMenuItemRadio(i18n.T(lang, "tray.language.av"), lang == i18n.LangAV)
-	langAV.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangAV) })
-	langMHR := application.NewMenuItemRadio(i18n.T(lang, "tray.language.mhr"), lang == i18n.LangMHR)
-	langMHR.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangMHR) })
-	langUDM := application.NewMenuItemRadio(i18n.T(lang, "tray.language.udm"), lang == i18n.LangUDM)
-	langUDM.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangUDM) })
-	langKV := application.NewMenuItemRadio(i18n.T(lang, "tray.language.kv"), lang == i18n.LangKV)
-	langKV.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangKV) })
-	langMYV := application.NewMenuItemRadio(i18n.T(lang, "tray.language.myv"), lang == i18n.LangMYV)
-	langMYV.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangMYV) })
-	langKBD := application.NewMenuItemRadio(i18n.T(lang, "tray.language.kbd"), lang == i18n.LangKBD)
-	langKBD.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangKBD) })
-	langTYV := application.NewMenuItemRadio(i18n.T(lang, "tray.language.tyv"), lang == i18n.LangTYV)
-	langTYV.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangTYV) })
-	langXAL := application.NewMenuItemRadio(i18n.T(lang, "tray.language.xal"), lang == i18n.LangXAL)
-	langXAL.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangXAL) })
-	langUK := application.NewMenuItemRadio(i18n.T(lang, "tray.language.uk"), lang == i18n.LangUK)
-	langUK.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangUK) })
-	langBE := application.NewMenuItemRadio(i18n.T(lang, "tray.language.be"), lang == i18n.LangBE)
-	langBE.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangBE) })
-	langKK := application.NewMenuItemRadio(i18n.T(lang, "tray.language.kk"), lang == i18n.LangKK)
-	langKK.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangKK) })
-	langUZ := application.NewMenuItemRadio(i18n.T(lang, "tray.language.uz"), lang == i18n.LangUZ)
-	langUZ.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangUZ) })
-	langHY := application.NewMenuItemRadio(i18n.T(lang, "tray.language.hy"), lang == i18n.LangHY)
-	langHY.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangHY) })
-	langAZ := application.NewMenuItemRadio(i18n.T(lang, "tray.language.az"), lang == i18n.LangAZ)
-	langAZ.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangAZ) })
-	langKA := application.NewMenuItemRadio(i18n.T(lang, "tray.language.ka"), lang == i18n.LangKA)
-	langKA.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangKA) })
-	langRO := application.NewMenuItemRadio(i18n.T(lang, "tray.language.ro"), lang == i18n.LangRO)
-	langRO.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangRO) })
-	langKY := application.NewMenuItemRadio(i18n.T(lang, "tray.language.ky"), lang == i18n.LangKY)
-	langKY.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangKY) })
-	langTG := application.NewMenuItemRadio(i18n.T(lang, "tray.language.tg"), lang == i18n.LangTG)
-	langTG.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangTG) })
-	langTK := application.NewMenuItemRadio(i18n.T(lang, "tray.language.tk"), lang == i18n.LangTK)
-	langTK.OnClick(func(*application.Context) { ui.setLanguage(i18n.LangTK) })
-	langMenu := application.NewMenuFromItems(langRU, langEN, langDE, langFR, langES, langTR, langFA,
-		langTT, langBA, langCE, langCV, langSAH, langBUA, langOS, langAV, langMHR, langUDM, langKV, langMYV, langKBD, langTYV, langXAL,
-		langUK, langBE, langKK, langUZ, langHY, langAZ, langKA, langRO, langKY, langTG, langTK)
+	languageChoices := []struct {
+		lang  i18n.Lang
+		label string
+	}{
+		{i18n.LangRU, "tray.language.ru"},
+		{i18n.LangEN, "tray.language.en"},
+	}
+	langItems := make([]*application.MenuItem, 0, len(languageChoices))
+	for _, entry := range languageChoices {
+		item := application.NewMenuItemRadio(i18n.T(lang, entry.label), lang == entry.lang)
+		item.OnClick(func(*application.Context) { ui.setLanguage(entry.lang) })
+		langItems = append(langItems, item)
+	}
+	langMenu := application.NewMenuFromItems(langItems[0], langItems[1:]...)
 
 	testConn := application.NewMenuItem(i18n.T(lang, "tray.connection_test")).OnClick(func(*application.Context) {
 		go ui.runHealthCheck()
@@ -601,14 +434,12 @@ func (ui *trayUI) rebuildMenu() {
 		application.NewSubmenu(i18n.T(lang, "tray.dns"), dnsMenu),
 		application.NewSubmenu(i18n.T(lang, "tray.domains"), domainMenu),
 		application.NewSubmenu(i18n.T(lang, "tray.options"), optionsMenu),
-		application.NewSubmenu(i18n.T(lang, "tray.upstream"), upstreamMenu),
 		application.NewSubmenu(i18n.T(lang, "tray.youtube_features"), youtubeFeaturesMenu),
 		statsItem,
 		speedTestItem,
 		pacURLItem,
 		application.NewSubmenu(i18n.T(lang, "tray.settings_io"), settingsMenu),
 		application.NewSubmenu(i18n.T(lang, "tray.per_domain_dpi"), perDomainMenu),
-		application.NewSubmenu(i18n.T(lang, "tray.ports"), portsMenu),
 		testConn,
 		application.NewSubmenu(i18n.T(lang, "tray.updates"), updatesMenu),
 		application.NewSubmenu(i18n.T(lang, "tray.language"), langMenu),
@@ -704,12 +535,6 @@ func (ui *trayUI) statusLabel(st Status) string {
 		st.DoH,
 		i18n.T(lang, healthKey),
 	)
-	if ui.deps.socks5 != nil && ui.deps.prefs.Get().SOCKS5 {
-		label += " | " + i18n.Tf(lang, "tray.socks5.port", ui.deps.socks5.Port())
-	}
-	if ui.deps.prefs.Get().SplitTunnel && ui.deps.splitTunnelPort > 0 {
-		label += " | " + i18n.Tf(lang, "tray.split_tunnel.port", ui.deps.splitTunnelPort)
-	}
 	return label
 }
 
@@ -852,13 +677,9 @@ func (ui *trayUI) updateStatusLabel() string {
 
 func strategyMenuLabel(lang i18n.Lang, s dpi.Strategy) string {
 	key := map[dpi.Strategy]string{
-		dpi.StrategyNone:             "strategy.none",
-		dpi.StrategyTCPSegmentation:  "strategy.tcp_seg",
-		dpi.StrategyTCPSegmentation1: "strategy.tcp_1",
-		dpi.StrategyTCPSegmentation8: "strategy.tcp_8",
-		dpi.StrategyTLSRecordFrag:    "strategy.tls_frag",
-		dpi.StrategyTLSRecordFrag2:   "strategy.tls_frag_2",
-		dpi.StrategyECH:              "strategy.ech",
+		dpi.StrategyNone:           "strategy.none",
+		dpi.StrategyTLSRecordFrag:  "strategy.tls_frag",
+		dpi.StrategyTLSRecordFrag2: "strategy.tls_frag_2",
 	}[s]
 	if key == "" {
 		return s.String()

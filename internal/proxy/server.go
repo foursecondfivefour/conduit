@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
-	"github.com/foursecondfivefour/conduit/internal/dpi"
 	"github.com/foursecondfivefour/conduit/internal/dns"
+	"github.com/foursecondfivefour/conduit/internal/dpi"
 )
 
 // hostValidRegex matches valid hostnames (alphanumeric, dots, colons, hyphens only).
@@ -28,18 +28,11 @@ type Server struct {
 
 	stats      *TrafficStats
 	killSwitch *KillSwitch
-	upstream   *UpstreamProxy
-	aiSelector interface {
-		GetStrategyForHost(host string) dpi.Strategy
-		RecordStrategy(host string, strategy dpi.Strategy)
-	}
 
-	mu            sync.RWMutex
-	httpSrv       *http.Server
-	listener      net.Listener
-	extraServers  []*http.Server
-	extraListens  []net.Listener
-	running       atomic.Bool
+	mu       sync.RWMutex
+	httpSrv  *http.Server
+	listener net.Listener
+	running  atomic.Bool
 }
 
 func NewServer(resolver *dns.Resolver, settings func() config.Settings) *Server {
@@ -88,28 +81,14 @@ func (s *Server) Start(ctx context.Context) (int, error) {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	s.mu.Lock()
+	s.mu.RLock()
 	srv := s.httpSrv
-	extraSrvs := make([]*http.Server, len(s.extraServers))
-	copy(extraSrvs, s.extraServers)
-	extraLns := make([]net.Listener, len(s.extraListens))
-	copy(extraLns, s.extraListens)
-	s.mu.Unlock()
+	s.mu.RUnlock()
 
-	var lastErr error
-	for _, ln := range extraLns {
-		if err := ln.Close(); err != nil {
-			lastErr = err
-		}
-	}
-	for _, es := range extraSrvs {
-		if err := es.Shutdown(ctx); err != nil {
-			lastErr = err
-		}
-	}
 	if srv == nil {
-		return lastErr
+		return nil
 	}
+	var lastErr error
 	if err := srv.Shutdown(ctx); err != nil && lastErr == nil {
 		lastErr = err
 	}
@@ -180,46 +159,15 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Determine strategy: AI selector takes priority if enabled.
+	// Determine the fragmentation strategy for this connection.
 	strategy := settings.Strategy
-	if s.aiSelector != nil {
-		strategy = s.aiSelector.GetStrategyForHost(host)
+	if !strategy.Valid() {
+		strategy = dpi.DefaultStrategy
 	}
 
-	var dial func(ctx context.Context, network string, address string) (net.Conn, error)
-	s.mu.RLock()
-	up := s.upstream
-	s.mu.RUnlock()
-	if up != nil && up.IsConfigured() {
-		dial = func(ctx context.Context, network, address string) (net.Conn, error) {
-			return DialChain(ctx, up, network, address)
-		}
-	} else {
+	dial := s.dialFunc
+	if dial == nil {
 		dial = s.resolver.DialContext
-	}
-	if s.dialFunc != nil {
-		dial = s.dialFunc
-	}
-
-	// ECH strategy: wrap the upstream connection in TLS with ECH support.
-	if strategy == dpi.StrategyECH {
-		baseDial := dial
-		dial = func(ctx context.Context, network, address string) (net.Conn, error) {
-			conn, err := baseDial(ctx, network, address)
-			if err != nil {
-				return nil, err
-			}
-			host, _, _ := net.SplitHostPort(address)
-			if host == "" {
-				host = address
-			}
-			tlsConn, err := dpi.ECHConn(conn, host)
-			if err != nil {
-				conn.Close()
-				return nil, err
-			}
-			return tlsConn, nil
-		}
 	}
 
 	upstream, err := dial(r.Context(), "tcp", r.Host)
@@ -279,11 +227,6 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		s.stats.RecordConnection(host, sent, recv)
 		s.stats.ActiveConns.Add(-1)
 	}
-
-	// Record successful strategy for AI selector.
-	if s.aiSelector != nil {
-		s.aiSelector.RecordStrategy(host, finalStrategy)
-	}
 }
 
 func (s *Server) SetKillSwitch(ks *KillSwitch) {
@@ -306,59 +249,4 @@ func (s *Server) SetStats(stats *TrafficStats) {
 // Stats returns the attached traffic statistics tracker.
 func (s *Server) Stats() *TrafficStats {
 	return s.stats
-}
-
-// SetUpstream configures an upstream proxy for chaining.
-func (s *Server) SetUpstream(u *UpstreamProxy) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.upstream = u
-}
-
-// SetAISelector attaches an AI-based DPI strategy selector to the server.
-func (s *Server) SetAISelector(as interface {
-	GetStrategyForHost(host string) dpi.Strategy
-	RecordStrategy(host string, strategy dpi.Strategy)
-}) {
-	s.aiSelector = as
-}
-
-// AddExtraPorts starts additional proxy listeners from the given configs.
-func (s *Server) AddExtraPorts(ports []config.ProxyPortConfig) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for _, pc := range ports {
-		addr := net.JoinHostPort(config.ListenHost, fmt.Sprintf("%d", pc.Port))
-		ln, err := net.Listen("tcp", addr)
-		if err != nil {
-			slog.Warn("extra port listen failed", "port", pc.Port, "err", err)
-			continue
-		}
-		srv := &http.Server{
-			Handler:           http.HandlerFunc(s.serve),
-			ReadHeaderTimeout: config.ReadHeaderTimeout,
-			ReadTimeout:       config.ReadHeaderTimeout,
-			WriteTimeout:      config.IdleTimeout,
-			IdleTimeout:       config.IdleTimeout,
-		}
-		s.extraListens = append(s.extraListens, ln)
-		s.extraServers = append(s.extraServers, srv)
-		go func() {
-			if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-				slog.Warn("extra port serve error", "err", err)
-			}
-		}()
-	}
-}
-
-// ExtraPorts returns the ports of additional active listeners.
-func (s *Server) ExtraPorts() []int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	ports := make([]int, 0, len(s.extraListens))
-	for _, ln := range s.extraListens {
-		ports = append(ports, ln.Addr().(*net.TCPAddr).Port)
-	}
-	return ports
 }

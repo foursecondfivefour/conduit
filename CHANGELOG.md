@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Removed
+
+- MASQUE (HTTP/3) proxy — was a UDP listener stub with no QUIC implementation
+- SOCKS5 proxy (`internal/proxy/socks5.go`) and the tray toggle
+- Upstream proxy chaining (HTTP CONNECT / SOCKS5) and the tray submenu
+- Split tunneling listener and the tray toggle
+- "TUN mode" (a Windows Firewall block-all script) and the tray toggle
+- "AI DPI strategy selector" (`internal/dpi/ai.go`) and the tray toggle
+- ECH strategy (`internal/dpi/ech.go`) — never negotiated ECH
+- TCP segmentation strategies (`tcp_segmentation`, `tcp_segmentation_1`, `tcp_segmentation_8`)
+- Multi-port proxy configuration (`ProxyPortConfig`, `AddExtraPorts`)
+- 31 UI languages; only RU and EN remain
+
+### Changed
+
+- Default DPI strategy is now `tls_record_frag`
+- Tray menu trimmed: strategy, DNS, domains, options, YouTube features, stats, updates, language, logs
+- Onboarding texts rewritten to match the reduced feature set
+
 ## [1.3.0] - 2026-06-15
 
 ### Added

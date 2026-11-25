@@ -8,8 +8,8 @@ import (
 
 func TestDefaultSettings(t *testing.T) {
 	s := DefaultSettings()
-	if s.Strategy != dpi.StrategyTCPSegmentation {
-		t.Fatalf("strategy = %s, want %s", s.Strategy, dpi.StrategyTCPSegmentation)
+	if s.Strategy != dpi.StrategyTLSRecordFrag {
+		t.Fatalf("strategy = %s, want %s", s.Strategy, dpi.StrategyTLSRecordFrag)
 	}
 	if ListenHost != "127.0.0.1" {
 		t.Fatalf("ListenHost = %s", ListenHost)
@@ -26,10 +26,6 @@ func TestConstants(t *testing.T) {
 		want  int
 	}{
 		{"DefaultProxyPort", DefaultProxyPort, 31284},
-		{"DefaultSOCKS5Port", DefaultSOCKS5Port, 31285},
-		{"SOCKS5PortOffset", SOCKS5PortOffset, 1},
-		{"SplitTunnelPortOffset", SplitTunnelPortOffset, 2},
-		{"DefaultMASQUEPort", DefaultMASQUEPort, 4430},
 		{"PiPWidth", PiPWidth, 320},
 		{"PiPHeight", PiPHeight, 180},
 		{"WindowWidth", WindowWidth, 960},
@@ -54,27 +50,6 @@ func TestDefaultAdBlockURL(t *testing.T) {
 func TestDefaultKillSwitchEnabled(t *testing.T) {
 	if DefaultKillSwitchEnabled {
 		t.Fatal("DefaultKillSwitchEnabled should be false by default")
-	}
-}
-
-func TestProxyPortConfig(t *testing.T) {
-	cfg := ProxyPortConfig{
-		Port:      31286,
-		TCPPort:   true,
-		Strategy:  "tcp_segmentation_8",
-		Allowlist: "youtube",
-	}
-	if cfg.Port != 31286 {
-		t.Errorf("port = %d", cfg.Port)
-	}
-	if !cfg.TCPPort {
-		t.Error("TCPPort should be true")
-	}
-	if cfg.Strategy != "tcp_segmentation_8" {
-		t.Errorf("strategy = %s", cfg.Strategy)
-	}
-	if cfg.Allowlist != "youtube" {
-		t.Errorf("allowlist = %s", cfg.Allowlist)
 	}
 }
 

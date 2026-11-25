@@ -17,8 +17,8 @@ Out of scope: remote attackers (proxy binds `127.0.0.1` only), Authenticode sign
 
 | ID | Category | Control |
 |----|----------|---------|
-| A01 | Broken access control | Custom domain validation; default `youtube` preset; split tunnel enforcement |
-| A02 | Security misconfiguration | System proxy warning; prefs sanitization; SOCKS5/MASQUE localhost-only defaults |
+| A01 | Broken access control | Custom domain validation; default `youtube` preset; allowlist-enforced CONNECT |
+| A02 | Security misconfiguration | System proxy warning; prefs sanitization; proxy bound to localhost only |
 | A03 | Supply chain | Download URL allowlist (`github.com`, `objects.githubusercontent.com`); dependency scanning (govulncheck) |
 | A04 | Insecure design | AI strategy fallback to safe default; rate-limited health checks |
 | A05 | Injection | Safe URL open; JSON prefs sanitization; `ShellExecute` hardened |
@@ -26,7 +26,7 @@ Out of scope: remote attackers (proxy binds `127.0.0.1` only), Authenticode sign
 | A07 | Cryptographic failures | TLS 1.2 minimum; SHA256 verification; ECH support |
 | A08 | Integrity failures | Required SHA256; updater path validation; reproducible builds (`-buildid=`) |
 | A09 | Data exposure | Localhost-only proxy; no telemetry; user-data in `%AppData%` only |
-| A10 | SSRF | Release URLs restricted to repo paths; upstream proxy validation |
+| A10 | SSRF | Release URLs restricted to repo paths; connect targets validated against the allowlist |
 
 ## Reporting
 

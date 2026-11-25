@@ -22,32 +22,18 @@ const (
 	SplashDuration = 1 * time.Second
 
 	HotkeyModifiers = 0x0002 | 0x0004 // Ctrl+Shift
-	HotkeyVK        = 0x59             // Y
+	HotkeyVK        = 0x59            // Y
 
 	DefaultUpdateCheckInterval = 24 * time.Hour
 	UpdateCheckDelay           = 15 * time.Second
 
 	DefaultKillSwitchEnabled = false
 
-	DefaultSOCKS5Port    = 31285
-	SOCKS5PortOffset      = 1
-	SplitTunnelPortOffset = 2
-
 	PiPWidth  = 320
 	PiPHeight = 180
 
 	DefaultAdBlockURL = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-
-	DefaultMASQUEPort = 4430
 )
-
-// ProxyPortConfig defines an additional proxy port with its own settings.
-type ProxyPortConfig struct {
-	Port      int    `json:"port"`
-	TCPPort   bool   `json:"tcpPort"`
-	Strategy  string `json:"strategy"`
-	Allowlist string `json:"allowlist"`
-}
 
 // Settings holds runtime configuration shared across components.
 type Settings struct {
@@ -63,7 +49,7 @@ type Settings struct {
 
 func DefaultSettings() Settings {
 	return Settings{
-		Strategy:        dpi.StrategyTCPSegmentation,
+		Strategy:        dpi.DefaultStrategy,
 		DoHProvider:     dns.ProviderCloudflare,
 		AllowlistPreset: "youtube",
 		CustomDomains:   nil,
