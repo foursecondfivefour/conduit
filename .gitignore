@@ -21,7 +21,7 @@ profile.cov
 /release/
 
 # Rust
-/rust/target/
+target/
 
 # Go workspace (local only, not committed)
 go.work

@@ -1,3 +1,5 @@
+# The prebuilt toolchain used in this environment ships without rust-lld and
+# without development symlinks, so link against the system loader with bfd.
 [build]
 rustflags = ["-C", "link-self-contained=no", "-C", "link-arg=-fuse-ld=bfd"]
 

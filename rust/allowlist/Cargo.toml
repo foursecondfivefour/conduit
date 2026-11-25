@@ -1,0 +1,15 @@
+[package]
+name = "conduit-allowlist"
+description = "Host allowlist and custom-domain validation for Conduit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "conduit_allowlist"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
