@@ -1,39 +1,37 @@
 # Security
 
-Conduit is a **local-first** Windows app: a loopback CONNECT proxy, optional system proxy, and auto-update from GitHub.
+Conduit is a local-first Windows app: a loopback CONNECT proxy, an optional system proxy, and auto-update from GitHub. No telemetry, no remote listener.
 
 ## Threat model
 
 | Actor | Capability | Mitigation |
-|-------|------------|------------|
-| Same-user malware | Use system proxy / call loopback proxy | Allowlist-only CONNECT; default YouTube preset; proxy warning when enabling system proxy |
-| Network MITM on update | Replace downloaded binary | HTTPS + GitHub host allowlist; **mandatory** SHA256; PE header/size checks |
-| Malicious `preferences.json` | Broad allowlist via `customDomains` | Validation on load; reject TLD/broad suffixes |
-| Malicious release page URL | Open arbitrary URL from tray | `ValidateReleaseURL`; `ShellExecute` instead of `cmd /c start` |
+|---|---|---|
+| Same-user malware | Use the system proxy or call the loopback proxy | Allowlist-only CONNECT; default YouTube preset; warning when enabling the system proxy |
+| Network MITM on update | Replace the downloaded binary | HTTPS + GitHub host allowlist; mandatory SHA256; PE header and size checks |
+| Malicious `preferences.json` | Widen the allowlist via `customDomains` | Validation on load; TLD, IP, wildcard, and broad-suffix entries rejected (max 64 entries) |
+| Malicious release URL | Open an arbitrary URL from the tray | `ValidateReleaseURL` restricts to `https://github.com/foursecondfivefour/conduit`; `ShellExecute` instead of `cmd /c start` |
 
-Out of scope: remote attackers (proxy binds `127.0.0.1` only), Authenticode signing (see `docs/CODE_SIGNING.md`).
+Out of scope: remote attackers (the proxy binds `127.0.0.1` only) and Authenticode signing — see [CODE_SIGNING.md](CODE_SIGNING.md).
 
-## OWASP Top 10:2025 mapping (v1.3.0)
+## Controls
 
-| ID | Category | Control |
-|----|----------|---------|
-| A01 | Broken access control | Custom domain validation; default `youtube` preset; allowlist-enforced CONNECT |
-| A02 | Security misconfiguration | System proxy warning; prefs sanitization; proxy bound to localhost only |
-| A03 | Supply chain | Download URL allowlist (`github.com`, `objects.githubusercontent.com`); dependency scanning (govulncheck) |
-| A04 | Insecure design | AI strategy fallback to safe default; rate-limited health checks |
-| A05 | Injection | Safe URL open; JSON prefs sanitization; `ShellExecute` hardened |
-| A06 | Memory safety | Go memory-safe runtime; `sync.Pool` bounds; DNS cache cap (512) |
-| A07 | Cryptographic failures | TLS 1.2 minimum; SHA256 verification; ECH support |
-| A08 | Integrity failures | Required SHA256; updater path validation; reproducible builds (`-buildid=`) |
-| A09 | Data exposure | Localhost-only proxy; no telemetry; user-data in `%AppData%` only |
-| A10 | SSRF | Release URLs restricted to repo paths; connect targets validated against the allowlist |
+| Area | Control |
+|---|---|
+| Access control | Allowlist-enforced CONNECT; presets `youtube`, `google_media`, `custom`; default `youtube` |
+| Network exposure | Proxy bound to `127.0.0.1`; pprof, when enabled, also localhost only |
+| Supply chain | Download hosts limited to `github.com` and `objects.githubusercontent.com`; `govulncheck`, `gosec`, CodeQL in CI |
+| Transport | TLS 1.2 minimum for DoH, health checks, and update downloads |
+| Integrity | SHA256 sidecar is mandatory and fail-closed; version strings sanitized before path use |
+| Data | Settings and logs under `%AppData%\Conduit` (or `.\Conduit` in portable mode); no telemetry |
+| Memory bounds | DNS cache capped at 512 hosts; idle timeout on tunnels (120 s); `goleak` in tests |
+| Injection / SSRF | JSON preferences sanitized on load; release URLs restricted to this repo; CONNECT targets checked against the allowlist |
 
 ## Reporting
 
-Open a [GitHub Security Advisory](https://github.com/foursecondfivefour/conduit/security/advisories/new) or email the maintainer via the repository contact.
+Open a [GitHub Security Advisory](https://github.com/foursecondfivefour/conduit/security/advisories/new) or contact the maintainer through the repository.
 
 ## User guidance
 
-- Keep **system proxy** off unless you need other apps to use Conduit.
-- Do not add broad custom suffixes (e.g. `com`, `google.com`).
-- Prefer official GitHub releases; verify `conduit.exe.sha256` when installing manually.
+- Keep the **system proxy** off unless other apps need Conduit.
+- Do not add broad custom suffixes (`com`, `google.com`).
+- Use official GitHub releases; verify `conduit.exe.sha256` when installing manually.

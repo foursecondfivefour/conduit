@@ -1,12 +1,12 @@
 # Code signing (optional)
 
-Conduit releases are published **unsigned** by default. Windows SmartScreen may show a warning on first run or after in-app updates.
+Conduit releases are published unsigned. Windows SmartScreen may warn on first run and after an in-app update.
 
 ## Sign with signtool
 
-1. Obtain an Authenticode certificate (EV recommended for immediate SmartScreen reputation).
-2. Install the certificate in the Windows certificate store or use a `.pfx` file.
-3. Sign both binaries before publishing:
+1. Get an Authenticode certificate (EV gives instant SmartScreen reputation).
+2. Install it in the Windows certificate store, or keep a `.pfx` file.
+3. Sign every binary you publish:
 
 ```powershell
 signtool sign /fd SHA256 /tr http://timestamp.digicert.com /f cert.pfx /p PASSWORD build\conduit.exe
@@ -20,6 +20,8 @@ signtool sign /fd SHA256 /tr http://timestamp.digicert.com /f cert.pfx /p PASSWO
 signtool verify /pa build\conduit.exe
 ```
 
-## CI integration
+Do not change the binary after signing: the updater verifies `conduit.exe.sha256`, so re-signing must happen before checksums are generated.
 
-`.github/workflows/release.yml` includes a commented optional step gated on `secrets.WINDOWS_CERT_BASE64`. Decode the PFX in CI only on protected branches and never commit certificates to the repository.
+## CI
+
+`.github/workflows/release.yml` has a commented optional signing step gated on `secrets.WINDOWS_CERT_BASE64`. Decode the PFX only on protected branches and never commit certificates.
