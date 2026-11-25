@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/foursecondfivefour/conduit/internal/config"
@@ -61,14 +60,6 @@ func (s *ControlService) GetStatus() Status {
 		Strategy: st.Strategy.ShortLabel(),
 		DoH:      st.DoHProvider.ShortLabel(),
 	}
-}
-
-func (s *ControlService) RestartProxy() Status {
-	ctx := context.Background()
-	if _, err := s.proxy.Restart(ctx); err != nil {
-		slog.Warn("proxy restart failed", "err", err)
-	}
-	return s.GetStatus()
 }
 
 func (s *ControlService) SetStrategy(strategy dpi.Strategy) Status {
@@ -169,14 +160,6 @@ func (s *ControlService) SetLanguage(lang string) {
 
 func (s *ControlService) Language() string {
 	return s.store.Snapshot().Language
-}
-
-// KillSwitchEnabled returns whether the kill switch is currently active.
-func (s *ControlService) KillSwitchEnabled() bool {
-	if s.killSwitch == nil {
-		return false
-	}
-	return s.killSwitch.IsEnabled()
 }
 
 // ToggleKillSwitch enables or disables the kill switch.

@@ -191,17 +191,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	client = dpi.NewIdleConn(client, config.IdleTimeout)
 	upstream = dpi.NewIdleConn(upstream, config.IdleTimeout)
 
-	policy := dpi.NewDomainPolicy(strategy)
-	if settings.DomainStrategies != nil {
-		for domain, strategyVal := range settings.DomainStrategies {
-			st := dpi.Strategy(strategyVal)
-			if st.Valid() {
-				policy.Set(domain, st)
-			}
-		}
-	}
-	finalStrategy := policy.Get(host)
-	writer := dpi.NewFragmentWriter(finalStrategy)
+	writer := dpi.NewFragmentWriter(strategy)
 
 	if _, _, relayErr := dpi.Relay(client, upstream, writer); relayErr != nil {
 		slog.Warn("proxy: relay error", "err", relayErr, "host", host)

@@ -2,55 +2,13 @@ package app
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"net/url"
 	"runtime"
-	"sync"
 	"testing"
-	"time"
 
-	"go.uber.org/goleak"
-
-	"github.com/foursecondfivefour/conduit/internal/config"
 	"github.com/foursecondfivefour/conduit/internal/dns"
 	"github.com/foursecondfivefour/conduit/internal/dpi"
 	"github.com/foursecondfivefour/conduit/internal/proxy"
 )
-
-func TestMemProxyConnectBurstNoGoroutineLeak(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
-	store := NewSettingsStore(Preferences{AllowlistPreset: string(proxy.PresetYouTube)})
-	resolver := dns.NewResolver(dns.ProviderCloudflare)
-	srv := proxy.NewServer(resolver, store.Snapshot)
-
-	ctx := context.Background()
-	port, err := srv.Start(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer srv.Stop(ctx)
-
-	proxyURL, _ := url.Parse(fmt.Sprintf("http://%s:%d", config.ListenHost, port))
-	client := &http.Client{Timeout: 500 * time.Millisecond, Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)}}
-	defer client.CloseIdleConnections()
-
-	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 10; j++ {
-				req, _ := http.NewRequest(http.MethodConnect, "http://www.youtube.com:443", nil)
-				req.Host = "www.youtube.com:443"
-				_, _ = client.Do(req)
-			}
-		}()
-	}
-	wg.Wait()
-	time.Sleep(100 * time.Millisecond)
-}
 
 func TestMemSettingsToggleHeapStable(t *testing.T) {
 	store := NewSettingsStore(Preferences{

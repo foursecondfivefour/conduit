@@ -508,10 +508,6 @@ func (ui *trayUI) runHealthCheck() {
 	ui.healthKnown = true
 	ui.healthOK = err == nil
 	ui.mu.Unlock()
-	ui.deps.prefs.Update(func(p *Preferences) {
-		p.LastHealthOK = err == nil
-		p.LastHealthCheck = time.Now()
-	})
 	ui.refreshStatus()
 	lang := ui.lang()
 	if err != nil {

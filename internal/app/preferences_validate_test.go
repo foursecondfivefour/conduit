@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -16,7 +17,7 @@ func TestPreferencesValidateCustomDomains(t *testing.T) {
 		AllowlistPreset:     proxy.PresetCustom.String(),
 		CustomDomains:       []string{"com", "cdn.example.org"},
 	})
-	if err := writeTestFile(paths.PreferencesPath(), raw); err != nil {
+	if err := os.WriteFile(paths.PreferencesPath(), raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got, err := LoadPreferences(paths)
@@ -83,27 +84,6 @@ func TestPreferencesValidateWindowSizeMinimums(t *testing.T) {
 	}
 	if p.WindowHeight < 240 {
 		t.Fatalf("WindowHeight = %d, want >= 240", p.WindowHeight)
-	}
-}
-
-func TestPreferencesValidateDomainStrategies(t *testing.T) {
-	p := &Preferences{
-		DomainStrategies: map[string]string{
-			"youtube.com":      "tls_record_frag_2",
-			"googlevideo.com":  "tls_record_frag",
-			"invalid.com":      "bad_strategy",
-			"also_invalid.com": "",
-		},
-	}
-	SanitizePreferences(p)
-	if len(p.DomainStrategies) != 2 {
-		t.Fatalf("DomainStrategies len = %d, want 2", len(p.DomainStrategies))
-	}
-	if p.DomainStrategies["youtube.com"] != "tls_record_frag_2" {
-		t.Fatal("valid strategy was dropped")
-	}
-	if _, exists := p.DomainStrategies["invalid.com"]; exists {
-		t.Fatal("invalid strategy was not dropped")
 	}
 }
 

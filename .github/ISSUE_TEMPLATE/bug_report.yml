@@ -22,7 +22,7 @@ body:
     id: strategy
     attributes:
       label: DPI strategy
-      placeholder: tcp_segmentation
+      placeholder: tls_record_frag
   - type: input
     id: doh
     attributes:
